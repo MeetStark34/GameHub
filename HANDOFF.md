@@ -47,7 +47,7 @@ None. Phase 01.00 is complete and verified.
 - Phase 02.00: Authentication & User Foundation (Supabase Auth, profiles table, session persistence, login/signup/reset).
 
 ## Last Git Commit
-Will be committed following verification of Phase 01.00.
+cbab8e8 ("feat: complete Phase 01.00 Foundation & Architecture")
 
 ## Branch
 main
