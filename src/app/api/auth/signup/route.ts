@@ -16,9 +16,9 @@ const schema = z.object({
 export const POST = route(async (req) => {
   const body = schema.parse(await readJson(req));
   const db = await getDb();
-  if (!(await rateLimit(db, `signup:${clientIp(req)}`, 10, 3600))) throw new HttpError(429, 'Too many sign-ups from here. Try again later.');
+  if (!(await rateLimit(db, `signup:${clientIp(req)}`, 10, 3600))) throw new HttpError(429, 'errors.tooManySignups');
   const current = await currentUser();
-  if (current && !current.is_guest) throw new HttpError(409, 'You are already signed in.');
+  if (current && !current.is_guest) throw new HttpError(409, 'errors.alreadySignedIn');
   const user = await signUp(db, body, current?.is_guest ? current.id : null);
   // Fresh session for the member account (guest sessions are replaced).
   if (current) await db.query('delete from auth_sessions where user_id = $1', [user.id]);

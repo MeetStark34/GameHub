@@ -33,7 +33,7 @@ describe('mini sudoku', () => {
     const { puzzle, solution } = sudokuEngine.generate(createRng('rej'), 'normal');
     const empty = solution.map((row) => row.slice());
     empty[0][0] = 0;
-    expect(checkSudoku(puzzle, empty)).toMatch(/Fill/);
+    expect(checkSudoku(puzzle, empty)).toMatchObject({ key: 'gameMsg.sudoku.fill' });
     const swapped = solution.map((row) => row.slice());
     [swapped[0][0], swapped[0][1]] = [swapped[0][1], swapped[0][0]];
     expect(checkSudoku(puzzle, swapped)).not.toBeNull();

@@ -18,7 +18,7 @@ const readSchema = z.object({ ids: z.array(z.string().uuid()).max(100).optional(
 /** Marks notifications read: the given ids, or all when none are given. */
 export const POST = route(async (req) => {
   const user = await currentUser();
-  if (!user) throw new HttpError(401, 'Sign in first.');
+  if (!user) throw new HttpError(401, 'errors.signInFirst');
   const { ids } = readSchema.parse(await readJson(req));
   const db = await getDb();
   if (ids?.length)

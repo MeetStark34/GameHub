@@ -5,10 +5,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
 import { ChevronDown, Info, RefreshCw } from 'lucide-react';
-import { DIFFICULTY_LABELS, GAMES } from '@/config/games';
+import { GAMES } from '@/config/games';
 import type { ActResponse, SessionView } from '@/lib/contracts';
 import { formatDuration } from '@/lib/time';
 import { DIFFICULTIES, type Difficulty, type GameId, type GameMode } from '@/games/types';
+import { useI18n } from '@/i18n/client';
+import type { Msg } from '@/i18n/translate';
 import { GameGlyph } from '@/components/brand';
 import { useToasts, usePrefs } from '@/components/providers';
 import { Button, ButtonLink, Card, cn } from '@/components/ui';
@@ -29,14 +31,16 @@ const BOARDS: Record<GameId, ComponentType<BoardProps<any>>> = {
   queens: dynamic(() => import('./boards/queens-board'), { loading }),
 };
 
-async function post<T>(url: string, body: unknown): Promise<{ data?: T; error?: string; status: number }> {
+type Post<T> = { data?: T; error?: Msg; status: number };
+
+async function post<T>(url: string, body: unknown): Promise<Post<T>> {
   try {
     const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     const json = await res.json().catch(() => ({}));
-    if (!res.ok) return { error: json.error ?? 'Something went wrong.', status: res.status };
+    if (!res.ok) return { error: { key: json.code ?? 'play.generic' }, status: res.status };
     return { data: json as T, status: res.status };
   } catch {
-    return { error: 'You appear to be offline. Your progress is saved on this device.', status: 0 };
+    return { error: { key: 'play.offline' }, status: 0 };
   }
 }
 
@@ -45,9 +49,10 @@ export function PlayClient({ game, mode, difficulty }: { game: GameId; mode: Gam
   const router = useRouter();
   const { push } = useToasts();
   const { play } = usePrefs();
+  const { t, list, msg } = useI18n();
   const [view, setView] = useState<SessionView | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [message, setMessage] = useState<{ text: string; id: number } | null>(null);
+  const [error, setError] = useState<Msg | null>(null);
+  const [message, setMessage] = useState<Msg | null>(null);
   const [busy, setBusy] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [offset, setOffset] = useState(0);
@@ -57,7 +62,7 @@ export function PlayClient({ game, mode, difficulty }: { game: GameId; mode: Gam
       setError(null);
       setView(null);
       const r = await post<SessionView>('/api/play/start', { game, mode, difficulty, fresh });
-      if (!r.data) return setError(r.error ?? 'Could not start the game.');
+      if (!r.data) return setError(r.error ?? { key: 'play.startFailed' });
       setOffset(new Date(r.data.serverNow).getTime() - Date.now());
       setView(r.data);
       if (r.data.status === 'active') router.refresh(); // header picks up a newly created guest
@@ -81,14 +86,14 @@ export function PlayClient({ game, mode, difficulty }: { game: GameId; mode: Gam
       const r = await post<ActResponse>(`/api/play/${view.id}/act`, { action });
       setBusy(false);
       if (!r.data) {
-        setMessage({ text: r.error ?? 'Something went wrong.', id: Date.now() });
+        setMessage(r.error ?? { key: 'play.generic' });
         play('error');
         if (r.status === 410) router.refresh();
         return null;
       }
       setView(r.data.view);
       if (r.data.message) {
-        setMessage({ text: r.data.message, id: Date.now() });
+        setMessage(r.data.message);
         if (!r.data.solved) play('error');
       } else setMessage(null);
       if (r.data.completion && r.data.view.status === 'completed') {
@@ -104,6 +109,7 @@ export function PlayClient({ game, mode, difficulty }: { game: GameId; mode: Gam
 
   const Board = BOARDS[game];
   const done = view?.status === 'completed';
+  const modeLabel = t(`mode.${mode}`);
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -114,9 +120,9 @@ export function PlayClient({ game, mode, difficulty }: { game: GameId; mode: Gam
         <div className="min-w-0 flex-1">
           <h1 className="font-display text-2xl font-bold leading-tight tracking-tight">{meta.name}</h1>
           <p className="text-sm text-muted">
-            <span className={cn('font-semibold', mode === 'daily' ? 'text-accent' : 'text-fg')}>{mode === 'daily' ? 'Daily Set' : 'Unlimited'}</span>
+            <span className={cn('font-semibold', mode === 'daily' ? 'text-accent' : 'text-fg')}>{modeLabel}</span>
             {' · '}
-            {DIFFICULTY_LABELS[view?.difficulty ?? difficulty]}
+            {t(`difficulty.${view?.difficulty ?? difficulty}`)}
             {view?.dailyDate && ` · ${view.dailyDate}`}
           </p>
         </div>
@@ -125,7 +131,7 @@ export function PlayClient({ game, mode, difficulty }: { game: GameId; mode: Gam
 
       {mode === 'unlimited' && (
         <div className="mb-4 flex flex-wrap items-center gap-2">
-          <div role="radiogroup" aria-label="Difficulty" className="flex rounded-xl border border-border bg-card p-1">
+          <div role="radiogroup" aria-label={t('difficulty.label')} className="flex rounded-xl border border-border bg-card p-1">
             {DIFFICULTIES.map((d) => (
               <Link
                 key={d}
@@ -134,12 +140,12 @@ export function PlayClient({ game, mode, difficulty }: { game: GameId; mode: Gam
                 href={`/play/${game}?mode=unlimited&difficulty=${d}`}
                 className={cn('rounded-lg px-3 py-1 text-sm font-medium', d === difficulty ? 'bg-accent text-accent-fg' : 'text-muted hover:text-fg')}
               >
-                {DIFFICULTY_LABELS[d]}
+                {t(`difficulty.${d}`)}
               </Link>
             ))}
           </div>
           <Button variant="secondary" size="sm" onClick={() => start(true)} disabled={busy}>
-            <RefreshCw className="size-4" aria-hidden /> New puzzle
+            <RefreshCw className="size-4" aria-hidden /> {t('play.newPuzzle')}
           </Button>
         </div>
       )}
@@ -147,24 +153,24 @@ export function PlayClient({ game, mode, difficulty }: { game: GameId; mode: Gam
       <Card className="mb-4 overflow-hidden">
         <button onClick={() => setRulesOpen((o) => !o)} aria-expanded={rulesOpen} className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium">
           <Info className="size-4 text-muted" aria-hidden />
-          <span className="flex-1">{meta.tagline}</span>
-          <span className="text-muted">How to play</span>
+          <span className="flex-1">{t(`games.${game}.tagline`)}</span>
+          <span className="text-muted">{t('play.howToPlay')}</span>
           <ChevronDown className={cn('size-4 text-muted transition', rulesOpen && 'rotate-180')} aria-hidden />
         </button>
         {rulesOpen && (
           <ul className="list-disc space-y-1 border-t border-border px-8 py-3 text-sm text-muted">
-            {meta.rules.map((r) => (
+            {list(`games.${game}.rules`).map((r) => (
               <li key={r}>{r}</li>
             ))}
-            <li>No timer pressure and no fail state. Your time is recorded, never enforced.</li>
+            <li>{t('play.noPressure')}</li>
           </ul>
         )}
       </Card>
 
       {error && (
         <Card className="p-6 text-center">
-          <p className="mb-4 text-danger">{error}</p>
-          <Button onClick={() => start(false)}>Try again</Button>
+          <p className="mb-4 text-danger">{msg(error)}</p>
+          <Button onClick={() => start(false)}>{t('common.tryAgain')}</Button>
         </Card>
       )}
 
@@ -173,10 +179,10 @@ export function PlayClient({ game, mode, difficulty }: { game: GameId; mode: Gam
       {view && (
         <>
           <div className="relative">
-            <Board key={view.id} sessionId={view.id} puzzle={view.puzzle as never} solved={done} busy={busy} act={act} />
+            <Board key={view.id} sessionId={view.id} puzzle={view.puzzle} solved={done} busy={busy} act={act} />
           </div>
           <p aria-live="assertive" className={cn('mt-3 min-h-6 text-center text-sm font-medium', message && !done ? 'text-danger' : 'text-success')}>
-            {!done && message?.text}
+            {!done && message && msg(message)}
           </p>
         </>
       )}
@@ -190,7 +196,7 @@ export function PlayClient({ game, mode, difficulty }: { game: GameId; mode: Gam
       {!done && view && (
         <div className="mt-6 flex justify-center">
           <ButtonLink href={mode === 'daily' ? '/daily' : '/unlimited'} variant="ghost" size="sm">
-            Back to {mode === 'daily' ? 'Daily Set' : 'Unlimited'}
+            {t('play.backTo', { mode: modeLabel })}
           </ButtonLink>
         </div>
       )}
@@ -199,6 +205,7 @@ export function PlayClient({ game, mode, difficulty }: { game: GameId; mode: Gam
 }
 
 function Timer({ view, offset }: { view: SessionView; offset: number }) {
+  const { t } = useI18n();
   const [now, setNow] = useState(() => Date.now() + offset);
   const done = view.status === 'completed';
   useEffect(() => {
@@ -209,8 +216,8 @@ function Timer({ view, offset }: { view: SessionView; offset: number }) {
   const ms = done && view.completion ? view.completion.durationMs : Math.max(0, now - new Date(view.startedAt).getTime());
   return (
     <div className="rounded-xl border border-border bg-card px-3 py-1.5 text-right">
-      <p className="font-mono text-[10px] uppercase tracking-widest text-muted">{done ? 'Final time' : 'Time'}</p>
-      <p className="num font-mono text-lg font-bold leading-tight" aria-label={`Elapsed ${formatDuration(ms)}`}>
+      <p className="font-mono text-[10px] uppercase tracking-widest text-muted">{done ? t('play.finalTime') : t('play.time')}</p>
+      <p className="num font-mono text-lg font-bold leading-tight" aria-label={t('play.elapsed', { time: formatDuration(ms) })}>
         {formatDuration(ms)}
       </p>
     </div>

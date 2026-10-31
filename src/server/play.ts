@@ -1,5 +1,5 @@
 import 'server-only';
-import { randomUUID } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { DAILY_DIFFICULTY_BY_WEEKDAY, GAMES } from '@/config/games';
 import { DAILY_GRACE_MINUTES } from '@/config/economy';
 import { MASTERY_RANKS, PLAYER_RANKS } from '@/config/ranks';
@@ -38,12 +38,64 @@ const UNLIMITED_STARTS_PER_MINUTE = 30;
 
 export const dailyDifficultyFor = (date: UtcDate): Difficulty => DAILY_DIFFICULTY_BY_WEEKDAY[parseUtcDate(date).getUTCDay()];
 
-export const dailySeed = (date: UtcDate, game: GameId) => `daily:${date}:${game}`;
+export const dailySeed = (date: UtcDate, game: GameId, attempt = 0) => `daily:${date}:${game}${attempt ? `:${attempt}` : ''}`;
+
+/** Candidates tried per game before falling back to reuse (see docs/DAILY.md). */
+export const MAX_DAILY_ATTEMPTS = 250;
+
+/** Canonical JSON (sorted keys) so equal puzzles hash identically. */
+function canonical(v: unknown): string {
+  if (Array.isArray(v)) return `[${v.map(canonical).join(',')}]`;
+  if (v && typeof v === 'object')
+    return `{${Object.keys(v as object)
+      .sort()
+      .map((k) => `${JSON.stringify(k)}:${canonical((v as Record<string, unknown>)[k])}`)
+      .join(',')}}`;
+  return JSON.stringify(v);
+}
+
+/** Stable identity of a puzzle: the engine's own fingerprint, else a content hash. */
+export function puzzleFingerprint(game: GameId, puzzle: unknown): string {
+  const engine = ENGINES[game];
+  return engine.fingerprint?.(puzzle) ?? `sha256:${createHash('sha256').update(canonical(puzzle)).digest('hex').slice(0, 40)}`;
+}
+
+export interface DailyChoice {
+  puzzle: unknown;
+  solution: unknown;
+  fingerprint: string;
+  attempt: number;
+  reused: boolean;
+}
+
+/**
+ * Deterministically picks the Daily puzzle for one game: candidate seeds
+ * daily:<date>:<game>, :1, :2 ... are tried in order and the first whose
+ * fingerprint has never been used in a Daily Set for that game wins.
+ * `lastUsed` maps fingerprint -> last date it was used. If every candidate
+ * collides (the content pool is exhausted), the candidate used longest ago
+ * is reused and flagged, never a silent repeat of yesterday.
+ */
+export function chooseDailyPuzzle(game: GameId, date: UtcDate, difficulty: Difficulty, lastUsed: ReadonlyMap<string, string>, maxAttempts = MAX_DAILY_ATTEMPTS): DailyChoice {
+  const engine = ENGINES[game];
+  let fallback: (DailyChoice & { last: string }) | null = null;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    const { puzzle, solution } = engine.generate(createRng(dailySeed(date, game, attempt)), difficulty, { mode: 'daily' });
+    const fingerprint = puzzleFingerprint(game, puzzle);
+    const last = lastUsed.get(fingerprint);
+    if (!last) return { puzzle, solution, fingerprint, attempt, reused: false };
+    if (!fallback || last < fallback.last) fallback = { puzzle, solution, fingerprint, attempt, reused: true, last };
+  }
+  const { last: _last, ...choice } = fallback!;
+  void _last;
+  return choice;
+}
 
 /**
  * Returns the Daily Set for a UTC date, creating it on first request.
- * Puzzles are generated deterministically from the date, stored, and never
- * changed afterwards; concurrent first requests converge on one set.
+ * Each game's puzzle is chosen by chooseDailyPuzzle against the Daily
+ * history, stored with its fingerprint, and never changed afterwards;
+ * concurrent first requests converge on one set.
  */
 export async function ensureDailySet(db: Db, date: UtcDate): Promise<{ difficulty: Difficulty; puzzles: Record<GameId, string> }> {
   const existing = await db.query<{ game: GameId; puzzle_id: string; difficulty: Difficulty }>(
@@ -54,11 +106,14 @@ export async function ensureDailySet(db: Db, date: UtcDate): Promise<{ difficult
     return { difficulty: existing[0].difficulty, puzzles: Object.fromEntries(existing.map((r) => [r.game, r.puzzle_id])) as Record<GameId, string> };
   }
   const difficulty = dailyDifficultyFor(date);
+  const history = await db.query<{ game: GameId; fingerprint: string; last: string }>(
+    `select game, fingerprint, max(utc_date) as last from daily_puzzle_history where utc_date <> $1 group by game, fingerprint`,
+    [date],
+  );
   // Generate outside the transaction (CPU work), insert inside it.
   const generated = GAME_IDS.map((game) => {
-    const engine = ENGINES[game];
-    const { puzzle, solution } = engine.generate(createRng(dailySeed(date, game)), difficulty);
-    return { game, puzzle, solution, version: engine.generatorVersion };
+    const used = new Map(history.filter((h) => h.game === game).map((h) => [h.fingerprint, h.last]));
+    return { game, version: ENGINES[game].generatorVersion, ...chooseDailyPuzzle(game, date, difficulty, used) };
   });
   await db.tx(async (tx) => {
     const created = await tx.query('insert into daily_sets (utc_date, difficulty) values ($1, $2) on conflict do nothing returning utc_date', [
@@ -71,9 +126,18 @@ export async function ensureDailySet(db: Db, date: UtcDate): Promise<{ difficult
         tx,
         `insert into puzzles (game, difficulty, mode, seed, generator_version, data, solution)
          values ($1, $2, 'daily', $3, $4, $5::jsonb, $6::jsonb) returning id`,
-        [g.game, difficulty, dailySeed(date, g.game), g.version, JSON.stringify(g.puzzle), JSON.stringify(g.solution)],
+        [g.game, difficulty, dailySeed(date, g.game, g.attempt), g.version, JSON.stringify(g.puzzle), JSON.stringify(g.solution)],
       );
-      await tx.query('insert into daily_puzzles (utc_date, game, puzzle_id) values ($1, $2, $3)', [date, g.game, p.id]);
+      await tx.query('insert into daily_puzzles (utc_date, game, puzzle_id, fingerprint, attempt, reused) values ($1, $2, $3, $4, $5, $6)', [
+        date,
+        g.game,
+        p.id,
+        g.fingerprint,
+        g.attempt,
+        g.reused,
+      ]);
+      await tx.query('insert into daily_puzzle_history (game, utc_date, fingerprint, reused) values ($1, $2, $3, $4)', [g.game, date, g.fingerprint, g.reused]);
+      if (g.reused) console.warn(`[daily] ${g.game} pool exhausted on ${date}; reused ${g.fingerprint}`);
     }
   });
   return ensureDailySet(db, date);
@@ -116,7 +180,7 @@ function toView(row: SessionRow, now: Date): SessionView {
 
 export async function getSession(db: Queryable, userId: string, sessionId: string, now: Date): Promise<SessionView> {
   const row = await maybeOne<SessionRow>(db, `${SESSION_SELECT} where s.id = $1 and s.user_id = $2`, [sessionId, userId]);
-  if (!row) throw new PlayError('Game not found.', 404);
+  if (!row) throw new PlayError('errors.gameNotFound', 404);
   return toView(row, now);
 }
 
@@ -167,11 +231,11 @@ export async function startSession(db: Db, input: StartInput): Promise<SessionVi
     `select count(*)::int as n from game_sessions where user_id = $1 and mode = 'unlimited' and started_at > $2::timestamptz`,
     [userId, new Date(now.getTime() - 60_000).toISOString()],
   );
-  if (recent.n >= UNLIMITED_STARTS_PER_MINUTE) throw new PlayError('You are starting games very quickly. Take a breath and try again.', 429);
+  if (recent.n >= UNLIMITED_STARTS_PER_MINUTE) throw new PlayError('errors.startingTooFast', 429);
 
   const engine = ENGINES[game];
   const seed = `unlimited:${randomUUID()}`;
-  const { puzzle, solution } = engine.generate(createRng(seed), difficulty);
+  const { puzzle, solution } = engine.generate(createRng(seed), difficulty, { mode: 'unlimited' });
   const id = await db.tx(async (tx) => {
     const p = await one<{ id: string }>(
       tx,
@@ -203,24 +267,24 @@ export const dailyDeadline = (date: UtcDate) => new Date(parseUtcDate(addDays(da
 export async function actOnSession(db: Db, userId: string, sessionId: string, action: unknown, now: Date): Promise<ActOutcome> {
   return db.tx(async (tx) => {
     const locked = await maybeOne<{ id: string }>(tx, 'select id from game_sessions where id = $1 and user_id = $2 for update', [sessionId, userId]);
-    if (!locked) throw new PlayError('Game not found.', 404);
+    if (!locked) throw new PlayError('errors.gameNotFound', 404);
     const row = await one<SessionRow>(tx, `${SESSION_SELECT} where s.id = $1`, [sessionId]);
     if (row.status === 'completed') return { view: toView(row, now), solved: true, completion: row.result };
     if (row.mode === 'daily' && now > dailyDeadline(row.daily_date!))
-      throw new PlayError('This Daily Set has ended. A new one is live now.', 410);
+      throw new PlayError('errors.dailyEnded', 410);
 
     const engine = ENGINES[row.game];
     let result;
     try {
       result = engine.act(row.data, row.state, action);
     } catch {
-      return { view: toView(row, now), solved: false, message: 'That move could not be read.', completion: null };
+      return { view: toView(row, now), solved: false, message: { key: 'errors.moveUnreadable' }, completion: null };
     }
 
     const durationMs = now.getTime() - new Date(row.started_at).getTime();
     if (result.solved && durationMs < GAMES[row.game].minSeconds[row.difficulty] * 1000) {
       // Too fast to be a real solve: refuse without failing the game.
-      return { view: toView(row, now), solved: false, message: 'That was faster than we can verify. Give it a second and submit again.', completion: null };
+      return { view: toView(row, now), solved: false, message: { key: 'errors.tooFast' }, completion: null };
     }
 
     await tx.query(
@@ -341,6 +405,7 @@ async function processCompletion(tx: Queryable, s: SessionRow, durationMs: numbe
         kind: 'true-player',
         title: 'True Player!',
         body: `All ${GAME_IDS.length} Daily Set games complete. True Player Streak: ${truePlayer.current}.`,
+        i18n: { title: { key: 'events.truePlayer.title' }, body: { key: 'events.truePlayer.body', params: { count: truePlayer.current } } },
         xp: XP_ECONOMY.dailySetCompleteBonus,
       };
       events.push(e);
@@ -377,14 +442,25 @@ async function processCompletion(tx: Queryable, s: SessionRow, durationMs: numbe
   const rankBefore = rankFromXp(before.total_xp, PLAYER_RANKS);
   const rankAfter = rankFromXp(after.total_xp, PLAYER_RANKS);
   if (rankAfter.level > rankBefore.level) {
-    const e: RewardEvent = { kind: 'level-up', title: `Level up: ${rankAfter.label}`, body: `You reached level ${rankAfter.level}.`, data: { level: rankAfter.level } };
+    const e: RewardEvent = {
+      kind: 'level-up',
+      title: `Level up: ${rankAfter.label}`,
+      body: `You reached level ${rankAfter.level}.`,
+      i18n: { title: { key: 'events.levelUp.title', params: { rank: rankAfter.label } }, body: { key: 'events.levelUp.body', params: { level: rankAfter.level } } },
+      data: { level: rankAfter.level },
+    };
     events.unshift(e);
     await notify(tx, userId, e);
   }
   const mBefore = rankFromXp(masteryBefore?.xp ?? 0, MASTERY_RANKS);
   const mAfter = rankFromXp(mastery.xp, MASTERY_RANKS);
   if (mAfter.rankIndex > mBefore.rankIndex) {
-    const e: RewardEvent = { kind: 'mastery-up', title: `${meta.name} mastery: ${mAfter.name}`, body: `Your ${meta.name} mastery rank went up.` };
+    const e: RewardEvent = {
+      kind: 'mastery-up',
+      title: `${meta.name} mastery: ${mAfter.name}`,
+      body: `Your ${meta.name} mastery rank went up.`,
+      i18n: { title: { key: 'events.masteryUp.title', params: { game: meta.name, rank: mAfter.name } }, body: { key: 'events.masteryUp.body', params: { game: meta.name } } },
+    };
     events.push(e);
     await notify(tx, userId, e);
   }

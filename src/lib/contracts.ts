@@ -3,6 +3,7 @@
  * no server imports.
  */
 import type { Difficulty, GameId, GameMode } from '@/games/types';
+import type { Msg } from '@/i18n/translate';
 
 export interface RewardEvent {
   kind:
@@ -19,6 +20,8 @@ export interface RewardEvent {
     | 'mastery-up';
   title: string;
   body: string;
+  /** Translatable versions of title/body (events.* keys). */
+  i18n?: { title: Msg; body: Msg };
   xp?: number;
   data?: Record<string, unknown>;
 }
@@ -66,7 +69,7 @@ export interface SessionView {
 export interface ActResponse {
   view: SessionView;
   solved: boolean;
-  message?: string;
+  message?: Msg;
   feedback?: unknown;
   completion: CompletionResult | null;
 }

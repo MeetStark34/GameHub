@@ -44,3 +44,21 @@ the UI in E2E (their engines and server flow are covered in unit and
 integration tests). No automated accessibility audit (axe) and no
 visual-regression suite. Production Postgres (Supabase) has not been
 exercised; only PGlite.
+
+## Phase 22 additions
+- `src/i18n/i18n.test.ts`: dictionary completeness, placeholder parity,
+  achievement coverage, untranslated-copy heuristic, every referenced key
+  exists, translator fallback, Accept-Language fallback.
+- Crossclimb: clue bank validity, ladder validity, unique ordering (no
+  chords), answers hidden, full flow including a reversed ladder.
+- Pinpoint: bank size and shape, alias collisions, matching (plurals,
+  articles, typos, accents), clue windows, assist gating and completability.
+- Tango: Daily is 6×6 at every difficulty.
+- Integration: Daily uniqueness and history, exhaustion fallback, Daily
+  Tango 6×6, developer showcase limited to the configured account,
+  leaderboard exclusion on all 9 boards, admin dashboard aggregates,
+  language persistence.
+- E2E: `language.spec.ts` (switching, persistence, translated server
+  messages, browser fallback), ticker only on the Dashboard, footer credit
+  link, rank control opens the Rank Roadmap.
+Totals at Phase 22: 114 unit/integration, 13 E2E.

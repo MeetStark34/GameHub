@@ -223,12 +223,14 @@ export interface PublicProfile {
   achievements: { id: string; name: string; icon: string; unlockedAt: string }[];
   achievementsTotal: number;
   isOwner: boolean;
+  /** Excluded from public leaderboards (e.g. the developer showcase account). */
+  leaderboardExcluded: boolean;
 }
 
 export async function getPublicProfile(db: Queryable, handle: string, viewerId: string | null, now: Date): Promise<PublicProfile | null> {
-  const user = await maybeOne<{ id: string; handle: string; display_name: string; title: string | null; profile_public: boolean; is_guest: boolean; created_at: Date }>(
+  const user = await maybeOne<{ id: string; handle: string; display_name: string; title: string | null; profile_public: boolean; is_guest: boolean; created_at: Date; leaderboard_excluded: boolean }>(
     db,
-    'select id, handle, display_name, title, profile_public, is_guest, created_at from users where handle = $1',
+    'select id, handle, display_name, title, profile_public, is_guest, created_at, leaderboard_excluded from users where handle = $1',
     [handle.toLowerCase()],
   );
   if (!user) return null;
@@ -262,6 +264,7 @@ export async function getPublicProfile(db: Queryable, handle: string, viewerId: 
       .map((u) => ({ id: u.achievement_id, name: defs.get(u.achievement_id)!.name, icon: defs.get(u.achievement_id)!.icon, unlockedAt: new Date(u.unlocked_at).toISOString() })),
     achievementsTotal: ACHIEVEMENTS.length,
     isOwner,
+    leaderboardExcluded: user.leaderboard_excluded,
   };
 }
 
@@ -369,7 +372,7 @@ export async function getLeaderboard(
     with ranked as (
       select u.id, u.handle, u.display_name, u.profile_public, ${valueSql} as value,
         row_number() over (order by ${valueSql} ${order}, u.created_at asc, u.id asc)::int as position
-      from users u ${from} and not u.is_guest and u.show_on_leaderboards
+      from users u ${from} and not u.is_guest and u.show_on_leaderboards and not u.leaderboard_excluded
     )
     select * from ranked where position <= ${limit} or id = $${viewerParam} order by position`;
   const rows = await db.query<{ id: string; handle: string; display_name: string; profile_public: boolean; value: number; position: number }>(sql, [

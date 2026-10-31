@@ -33,12 +33,12 @@ describe('zip', () => {
   it('rejects reversed, short, jumping and walled paths', () => {
     const { puzzle, solution } = zipEngine.generate(createRng('rej'), 'hard');
     expect(checkZip(puzzle, [...solution].reverse())).not.toBeNull();
-    expect(checkZip(puzzle, solution.slice(1))).toMatch(/every cell/);
+    expect(checkZip(puzzle, solution.slice(1))).toMatchObject({ key: 'gameMsg.zip.cover' });
     const jump = solution.slice();
     [jump[3], jump[5]] = [jump[5], jump[3]];
     expect(checkZip(puzzle, jump)).not.toBeNull();
     const w = puzzle.walls[0];
-    expect(checkZip({ ...puzzle, walls: [{ a: solution[0], b: solution[1] }] }, solution)).toMatch(/wall/);
+    expect(checkZip({ ...puzzle, walls: [{ a: solution[0], b: solution[1] }] }, solution)).toMatchObject({ key: 'gameMsg.zip.wall' });
     expect(w).toBeDefined();
   });
 });

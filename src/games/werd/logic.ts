@@ -1,3 +1,5 @@
+import type { Msg } from '@/i18n/translate';
+import { msg } from '../shared';
 import type { WerdGuess, WerdMark } from './types';
 
 /** Standard two-pass marking that handles repeated letters correctly. */
@@ -20,16 +22,16 @@ export function markGuess(guess: string, answer: string): WerdMark[] {
 }
 
 /** Strict mode: returns why `word` ignores earlier feedback, or null. */
-export function strictViolation(word: string, previous: WerdGuess[]): string | null {
+export function strictViolation(word: string, previous: WerdGuess[]): Msg | null {
   for (const g of previous) {
     const required = new Map<string, number>();
     for (let i = 0; i < g.word.length; i++) {
       if (g.marks[i] === 'hit' && word[i] !== g.word[i])
-        return `Letter ${i + 1} must be ${g.word[i].toUpperCase()}.`;
+        return msg('werd.strictHit', { n: i + 1, letter: g.word[i].toUpperCase() });
       if (g.marks[i] !== 'miss') required.set(g.word[i], (required.get(g.word[i]) ?? 0) + 1);
     }
     for (const [letter, n] of required) {
-      if ([...word].filter((x) => x === letter).length < n) return `Your guess must use ${letter.toUpperCase()}.`;
+      if ([...word].filter((x) => x === letter).length < n) return msg('werd.strictUse', { letter: letter.toUpperCase() });
     }
   }
   return null;

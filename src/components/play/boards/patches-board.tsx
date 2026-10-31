@@ -3,6 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import { shapeOf } from '@/games/patches/logic';
 import type { PatchRect, PatchShape, PatchesPuzzle } from '@/games/patches/types';
+import { useI18n } from '@/i18n/client';
 import { Button, cn } from '@/components/ui';
 import { BoardFrame, cellAt, regionColor, useAutoSubmit, useGridFocus, useStoredState, type BoardProps } from '../board-kit';
 
@@ -28,6 +29,7 @@ function ShapeHint({ shape }: { shape: PatchShape }) {
 
 export default function PatchesBoard({ sessionId, puzzle, solved, busy, act }: BoardProps<PatchesPuzzle>) {
   const { rows, cols, clues } = puzzle;
+  const { t } = useI18n();
   const [rects, setRects] = useStoredState<PatchRect[]>(`gh-board-${sessionId}`, () => []);
   const [preview, setPreview] = useState<PatchRect | null>(null);
   const [anchor, setAnchor] = useState<Cell | null>(null); // keyboard selection
@@ -69,11 +71,11 @@ export default function PatchesBoard({ sessionId, puzzle, solved, busy, act }: B
   const ownerAt = (r: number, c: number) => rects.findIndex((x) => inRect(x, r, c));
 
   return (
-    <BoardFrame size={Math.max(rows, cols)} label={`Patches board, ${rows} by ${cols}`}>
+    <BoardFrame size={Math.max(rows, cols)} label={t('boards.board', { game: 'Patches', size: `${rows}×${cols}` })}>
       <div
         ref={gridRef}
         role="grid"
-        aria-label="Draw rectangles. Drag across cells, or use arrows and Enter twice to mark corners."
+        aria-label={t('boards.patchesGrid')}
         className="board relative grid overflow-hidden rounded-xl border-[2.5px] border-fg bg-surface"
         style={{ gridTemplateColumns: `repeat(${cols}, 1fr)` }}
         onPointerDown={(e) => {
@@ -118,7 +120,7 @@ export default function PatchesBoard({ sessionId, puzzle, solved, busy, act }: B
               data-c={c}
               role="gridcell"
               tabIndex={focus[0] === r && focus[1] === c ? 0 : -1}
-              aria-label={`Row ${r + 1}, column ${c + 1}${clue ? `, clue ${clue.area}${clue.shape !== 'any' ? ` ${clue.shape}` : ''}` : ''}${rect ? ', in a patch' : ''}`}
+              aria-label={`${t('boards.cell', { r: r + 1, c: c + 1 })}${clue ? `, ${t('boards.clue', { n: clue.area })}${clue.shape !== 'any' ? ` ${t(`gameMsg.patches.shapes.${clue.shape}`)}` : ''}` : ''}${rect ? `, ${t('boards.inPatch')}` : ''}`}
               onKeyDown={(e) => {
                 if (move(e)) return;
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -154,10 +156,10 @@ export default function PatchesBoard({ sessionId, puzzle, solved, busy, act }: B
       </div>
       <div className="mt-3 flex items-center justify-between text-sm text-muted">
         <span className="num">
-          {rects.length}/{clues.length} patches
+          {t('boards.patches', { count: rects.length, total: clues.length })}
         </span>
         <Button variant="ghost" size="sm" disabled={solved || busy} onClick={() => setRects([])}>
-          Clear
+          {t('common.clear')}
         </Button>
       </div>
     </BoardFrame>

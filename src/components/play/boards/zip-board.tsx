@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef } from 'react';
 import { Undo2 } from 'lucide-react';
 import { wallKey } from '@/games/zip/logic';
 import type { ZipPuzzle } from '@/games/zip/types';
+import { useI18n } from '@/i18n/client';
 import { Button, cn } from '@/components/ui';
 import { BoardFrame, cellAt, useAutoSubmit, useStoredState, type BoardProps } from '../board-kit';
 
@@ -11,6 +12,7 @@ type Cell = [number, number];
 
 export default function ZipBoard({ sessionId, puzzle, solved, busy, act }: BoardProps<ZipPuzzle>) {
   const n = puzzle.size;
+  const { t } = useI18n();
   const ordered = useMemo(() => [...puzzle.waypoints].sort((a, b) => a.n - b.n), [puzzle.waypoints]);
   const start: Cell = [ordered[0].r, ordered[0].c];
   const [path, setPath] = useStoredState<Cell[]>(`gh-board-${sessionId}`, () => [start]);
@@ -66,11 +68,11 @@ export default function ZipBoard({ sessionId, puzzle, solved, busy, act }: Board
   const pts = path.map(([r, c]) => `${((c + 0.5) / n) * 100},${((r + 0.5) / n) * 100}`).join(' ');
 
   return (
-    <BoardFrame size={n} label={`Zip board, ${n} by ${n}`}>
+    <BoardFrame size={n} label={t('boards.board', { game: 'Zip', size: `${n}×${n}` })}>
       <div
         role="application"
         tabIndex={0}
-        aria-label={`Zip path. ${path.length} of ${n * n} cells covered. Use arrow keys to extend the path, Backspace to undo.`}
+        aria-label={t('boards.zipApp', { count: path.length, total: n * n })}
         onKeyDown={onKey}
         className="board relative overflow-hidden rounded-xl border-[2.5px] border-fg bg-surface"
         onPointerDown={(e) => {
@@ -125,14 +127,14 @@ export default function ZipBoard({ sessionId, puzzle, solved, busy, act }: Board
       </div>
       <div className="mt-3 flex items-center justify-between text-sm text-muted">
         <span className="num">
-          {path.length}/{n * n} cells
+          {t('boards.cells', { count: path.length, total: n * n })}
         </span>
         <div className="flex gap-1">
           <Button variant="ghost" size="sm" disabled={solved || busy || path.length < 2} onClick={() => setPath(path.slice(0, -1))}>
-            <Undo2 className="size-4" aria-hidden /> Undo
+            <Undo2 className="size-4" aria-hidden /> {t('common.undo')}
           </Button>
           <Button variant="ghost" size="sm" disabled={solved || busy} onClick={() => setPath([start])}>
-            Clear
+            {t('common.clear')}
           </Button>
         </div>
       </div>

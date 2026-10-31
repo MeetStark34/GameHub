@@ -1,3 +1,4 @@
+import type { Msg } from '@/i18n/translate';
 import type { Rng } from '@/lib/rng';
 
 export const GAME_IDS = [
@@ -24,6 +25,10 @@ export function isDifficulty(v: unknown): v is Difficulty {
   return typeof v === 'string' && (DIFFICULTIES as readonly string[]).includes(v);
 }
 
+export interface GenerateContext {
+  mode: GameMode;
+}
+
 export interface Generated<P, Sol> {
   puzzle: P;
   /** A reference solution. Never sent to the client. */
@@ -38,7 +43,7 @@ export interface ActResult<St> {
   state: St;
   solved: boolean;
   /** Short, player-facing message when an action was rejected or wrong. */
-  message?: string;
+  message?: Msg;
   /** Game-specific feedback for the UI (e.g. Werd letter marks). */
   feedback?: unknown;
 }
@@ -53,7 +58,14 @@ export interface GameEngine<P = any, Sol = any, St = any, Pub = any> {
   id: GameId;
   /** Bump when generator output for a given seed changes. */
   generatorVersion: number;
-  generate(rng: Rng, difficulty: Difficulty): Generated<P, Sol>;
+  /** `ctx.mode` lets a game use different board settings for the Daily Set. */
+  generate(rng: Rng, difficulty: Difficulty, ctx?: GenerateContext): Generated<P, Sol>;
+  /**
+   * Stable identity of a puzzle for Daily repeat prevention. Defaults to a
+   * hash of the canonical puzzle JSON; word games override it (e.g. the
+   * answer) so the same answer never reappears with a different layout.
+   */
+  fingerprint?(puzzle: P): string;
   initialState(puzzle: P): St;
   /** Data safe to show the player for the current state (no secrets). */
   toClient(puzzle: P, state: St): Pub;

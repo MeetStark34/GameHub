@@ -72,10 +72,3 @@ export function PageHeader({ eyebrow, title, children }: { eyebrow?: string; tit
   );
 }
 
-export const BADGE_LABELS: Record<string, string> = {
-  developer: 'Developer',
-  moderator: 'Moderator',
-  tester: 'Tester',
-  founder: 'Founder',
-  contributor: 'Contributor',
-};

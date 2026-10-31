@@ -71,7 +71,7 @@ export async function notify(tx: Queryable, userId: string, e: RewardEvent): Pro
     e.kind,
     e.title,
     e.body,
-    JSON.stringify({ ...(e.data ?? {}), xp: e.xp ?? null }),
+    JSON.stringify({ ...(e.data ?? {}), xp: e.xp ?? null, i18n: e.i18n ?? null }),
   ]);
 }
 
@@ -121,7 +121,14 @@ export async function advanceStreak(
   const xp = streakMilestoneXp(kind === 'normal' ? 'normal' : 'truePlayer', state.current);
   if (xp && (await awardXp(tx, userId, xp, `streak-${kind}-milestone`, `streak:${kind}:${day}`))) {
     const name = kind === 'normal' ? 'Normal Streak' : 'True Player Streak';
-    const e: RewardEvent = { kind: 'streak-milestone', title: `${state.current}-day ${name}!`, body: `Milestone bonus earned.`, xp };
+    const streakKey = kind === 'normal' ? '@streak.normal' : '@streak.truePlayer';
+    const e: RewardEvent = {
+      kind: 'streak-milestone',
+      title: `${state.current}-day ${name}!`,
+      body: `Milestone bonus earned.`,
+      i18n: { title: { key: 'events.streakMilestone.title', params: { count: state.current, streak: streakKey } }, body: { key: 'events.streakMilestone.body' } },
+      xp,
+    };
     events.push(e);
     await notify(tx, userId, e);
   }
@@ -163,6 +170,18 @@ export async function grantPunch(
     kind: 'punch',
     title: 'Punch earned',
     body: `${PUNCH_SOURCE_LABEL[source] ?? source}. ${outcome === 'punch' ? `${state.punchProgress}/${REPAIR_CARDS.punchesPerCard} on your card.` : 'Card complete!'}`,
+    i18n: {
+      title: { key: 'events.punch.title' },
+      body: {
+        key: `events.punch.${source === 'volume' ? 'volume' : source === 'daily-sets' ? 'sets' : 'admin'}`,
+        params: {
+          games: REPAIR_CARDS.dailyVolumeGames,
+          sets: REPAIR_CARDS.dailySetsPerPunch,
+          count: outcome === 'punch' ? state.punchProgress : REPAIR_CARDS.punchesPerCard,
+          total: REPAIR_CARDS.punchesPerCard,
+        },
+      },
+    },
     xp: XP_ECONOMY.punchEarned,
   };
   events.push(punchEvent);
@@ -179,6 +198,10 @@ export async function grantPunch(
       kind: state.cardsHeld >= REPAIR_CARDS.maxCards ? 'pocket-full' : 'card-created',
       title: state.cardsHeld >= REPAIR_CARDS.maxCards ? 'Gold Repair Card earned. Pocket full!' : 'Gold Repair Card earned',
       body: `You now hold ${state.cardsHeld}/${REPAIR_CARDS.maxCards} cards. Use one to repair a broken streak.`,
+      i18n: {
+        title: { key: state.cardsHeld >= REPAIR_CARDS.maxCards ? 'events.pocketFull.title' : 'events.cardCreated.title' },
+        body: { key: 'events.cardCreated.body', params: { held: state.cardsHeld, max: REPAIR_CARDS.maxCards } },
+      },
       xp: XP_ECONOMY.cardCreated,
     };
     events.push(e);
@@ -194,6 +217,10 @@ export async function grantPunch(
       kind: 'card-converted',
       title: 'Pocket full: card converted',
       body: `You already hold ${REPAIR_CARDS.maxCards} cards, so your new card became ${XP_ECONOMY.cardConverted} XP.`,
+      i18n: {
+        title: { key: 'events.cardConverted.title' },
+        body: { key: 'events.cardConverted.body', params: { max: REPAIR_CARDS.maxCards, xp: XP_ECONOMY.cardConverted } },
+      },
       xp: XP_ECONOMY.cardConverted,
     };
     events.push(e);
@@ -287,7 +314,14 @@ export async function evaluateAchievements(
       await awardXp(tx, userId, a.xp, 'achievement', `achievement:${a.id}`);
       const u = { id: a.id, name: a.name, description: a.description, icon: a.icon, xp: a.xp };
       out.push(u);
-      const e: RewardEvent = { kind: 'achievement', title: a.name, body: a.description, xp: a.xp, data: { achievementId: a.id, icon: a.icon } };
+      const e: RewardEvent = {
+        kind: 'achievement',
+        title: a.name,
+        body: a.description,
+        i18n: { title: { key: `achievements.items.${a.id}.name` }, body: { key: `achievements.items.${a.id}.description` } },
+        xp: a.xp,
+        data: { achievementId: a.id, icon: a.icon },
+      };
       events.push(e);
       await notify(tx, userId, e);
     }

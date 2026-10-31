@@ -1,11 +1,14 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
-import { Crown, Flame, Gamepad2, Trophy } from 'lucide-react';
+import Link from 'next/link';
+import { Crown, Flame, Gamepad2, ShieldOff, Trophy } from 'lucide-react';
 import { GAMES } from '@/config/games';
 import { getDb } from '@/lib/db';
+import { achievementText } from '@/i18n/helpers';
+import { getTranslator } from '@/i18n/server';
 import { AchievementIcon } from '@/components/achievement-icon';
 import { GameTile } from '@/components/game-card';
-import { BADGE_LABELS, ButtonLink, Card, Eyebrow, Pill, Progress } from '@/components/ui';
+import { ButtonLink, Card, Eyebrow, Pill, Progress } from '@/components/ui';
 import { currentUser } from '@/server/auth';
 import { getPublicProfile } from '@/server/queries';
 
@@ -13,16 +16,26 @@ type Props = { params: Promise<{ handle: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { handle } = await params;
+  const { t } = await getTranslator();
   const p = await getPublicProfile(await getDb(), handle, null, new Date());
-  if (!p) return { title: 'Player not found', robots: { index: false } };
-  return { title: `${p.displayName} (@${p.handle})`, description: `${p.displayName} is ${p.rank.label} on GameHub with ${p.xp.toLocaleString('en-US')} XP.` };
+  if (!p) return { title: t('profile.notFound'), robots: { index: false } };
+  return { title: `${p.displayName} (@${p.handle})`, description: `${p.displayName} · ${p.rank.label} · ${p.xp} XP` };
 }
 
 export default async function ProfilePage({ params }: Props) {
   const { handle } = await params;
+  const tr = await getTranslator();
+  const { t, num, locale } = tr;
   const viewer = await currentUser();
   const p = await getPublicProfile(await getDb(), handle, viewer?.id ?? null, new Date());
   if (!p) notFound();
+
+  const stats = [
+    { icon: Trophy, label: t('profile.level', { level: p.rank.level }), value: p.rank.label, sub: `${num(p.xp)} XP` },
+    { icon: Flame, label: t('profile.dayStreak'), value: num(p.normalStreak.current), sub: t('profile.best', { count: p.normalStreak.best }) },
+    { icon: Crown, label: t('profile.truePlayerSets'), value: num(p.truePlayerDays), sub: t('profile.streakValue', { count: p.truePlayerStreak.current }) },
+    { icon: Gamepad2, label: t('profile.games'), value: num(p.gamesCompleted), sub: t('profile.completed') },
+  ];
 
   return (
     <div className="mx-auto max-w-4xl space-y-6">
@@ -33,49 +46,51 @@ export default async function ProfilePage({ params }: Props) {
             <h1 className="font-display text-3xl font-bold uppercase tracking-tight">{p.displayName}</h1>
             <p className="text-sm text-muted">
               @{p.handle}
-              {p.title && ` · ${p.title}`} · since {new Date(p.memberSince).toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' })}
+              {p.title && ` · ${p.title}`} · {t('profile.since', { date: new Date(p.memberSince).toLocaleDateString(locale, { month: 'short', year: 'numeric', timeZone: 'UTC' }) })}
             </p>
-            {p.badges.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                {p.badges.map((b) => (
-                  <Pill key={b} className="border-accent/40 text-accent">
-                    {BADGE_LABELS[b] ?? b}
-                  </Pill>
-                ))}
-              </div>
-            )}
+            {/* Role badges and rank are separate: a badge is cosmetic, the rank comes from XP. */}
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
+              {p.badges.map((b) => (
+                <Pill key={b} className="border-accent/40 bg-accent-soft font-semibold text-accent">
+                  {t(`badges.${b}`)}
+                </Pill>
+              ))}
+              <Link href="/ranks">
+                <Pill className="border-gold/50 bg-gold/15 font-bold uppercase tracking-wide text-gold">{p.rank.label}</Pill>
+              </Link>
+            </div>
           </div>
           {p.isOwner && (
             <ButtonLink href="/settings" variant="secondary" size="sm">
-              Edit profile
+              {t('profile.edit')}
             </ButtonLink>
           )}
         </div>
         <dl className="grid grid-cols-2 border-t border-border sm:grid-cols-4">
-          {[
-            { icon: Trophy, label: `Level ${p.rank.level}`, value: p.rank.label, sub: `${p.xp.toLocaleString('en-US')} XP` },
-            { icon: Flame, label: 'Day Streak', value: String(p.normalStreak.current), sub: `Best ${p.normalStreak.best}` },
-            { icon: Crown, label: 'True Player Sets', value: String(p.truePlayerDays), sub: `Streak ${p.truePlayerStreak.current}` },
-            { icon: Gamepad2, label: 'Games', value: p.gamesCompleted.toLocaleString('en-US'), sub: 'completed' },
-          ].map(({ icon: Icon, label, value, sub }) => (
+          {stats.map(({ icon: Icon, label, value, sub }) => (
             <div key={label} className="border-border p-4 [&:not(:last-child)]:border-r">
               <dt className="flex items-center gap-1.5 text-xs text-muted">
                 <Icon className="size-3.5" aria-hidden /> {label}
               </dt>
-              <dd className="num font-display text-xl font-bold">{value}</dd>
+              <dd className="num font-display text-xl font-bold uppercase">{value}</dd>
               <dd className="num font-mono text-xs text-muted">{sub}</dd>
             </div>
           ))}
         </dl>
+        {p.leaderboardExcluded && (
+          <p className="flex items-center gap-2 border-t border-border px-6 py-2 text-xs text-muted">
+            <ShieldOff className="size-3.5" aria-hidden /> {t('profile.developer')}
+          </p>
+        )}
       </Card>
 
       <section aria-labelledby="mastery">
         <div className="mb-3 flex items-baseline justify-between">
           <h2 id="mastery" className="font-display text-lg font-bold uppercase tracking-wide">
-            Game mastery
+            {t('profile.mastery')}
           </h2>
           <span className="text-sm">
-            Overall: <span className="font-bold uppercase">{p.overallMastery.name}</span>
+            {t('profile.overall')}: <span className="font-bold uppercase">{p.overallMastery.name}</span>
           </span>
         </div>
         <Card className="grid divide-y divide-border sm:grid-cols-2 sm:divide-y-0">
@@ -87,7 +102,7 @@ export default async function ProfilePage({ params }: Props) {
                   <span className="font-semibold">{GAMES[m.game].name}</span>
                   <span className="font-bold uppercase">{m.rank.name}</span>
                 </span>
-                <Progress value={m.rank.progress} label={`${GAMES[m.game].name} mastery`} className="mt-1 h-1.5" />
+                <Progress value={m.rank.progress} label={t('result.mastery', { game: GAMES[m.game].name })} className="mt-1 h-1.5" />
               </span>
             </div>
           ))}
@@ -99,16 +114,16 @@ export default async function ProfilePage({ params }: Props) {
           {p.achievements.length}/{p.achievementsTotal}
         </Eyebrow>
         <h2 id="ach" className="mb-3 font-display text-lg font-bold">
-          Achievements
+          {t('profile.achievements')}
         </h2>
         {p.achievements.length === 0 ? (
-          <p className="text-sm text-muted">None yet.</p>
+          <p className="text-sm text-muted">{t('common.noneYet')}</p>
         ) : (
           <ul className="flex flex-wrap gap-2">
             {p.achievements.map((a) => (
               <li key={a.id} className="flex items-center gap-2 rounded-xl border border-gold/40 bg-gold/10 px-3 py-1.5 text-sm font-medium" title={new Date(a.unlockedAt).toUTCString()}>
                 <AchievementIcon name={a.icon} className="size-4 text-gold" />
-                {a.name}
+                {achievementText(tr, a.id).name}
               </li>
             ))}
           </ul>

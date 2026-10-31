@@ -8,7 +8,7 @@ const schema = z.object({ kind: z.enum(['normal', 'true_player']), requestId: z.
 
 export const POST = route(async (req) => {
   const user = await currentUser();
-  if (!user) throw new HttpError(401, 'Sign in first.');
+  if (!user) throw new HttpError(401, 'errors.signInFirst');
   const { kind, requestId } = schema.parse(await readJson(req));
   return useRepairCard(await getDb(), user.id, kind, requestId, new Date());
 });

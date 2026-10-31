@@ -3,13 +3,15 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
-import { ChevronDown, LogOut, Settings, Shield, User } from 'lucide-react';
+import { ChevronDown, LogOut, Settings, Shield, Trophy, User } from 'lucide-react';
+import { useI18n } from '@/i18n/client';
 import type { HeaderUser } from './header';
 
 export function UserMenu({ user }: { user: HeaderUser }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { t } = useI18n();
 
   useEffect(() => {
     if (!open) return;
@@ -40,7 +42,7 @@ export function UserMenu({ user }: { user: HeaderUser }) {
       >
         <span className="grid size-8 place-items-center rounded-lg bg-elevated font-display text-sm font-bold uppercase">{user.displayName.slice(0, 1)}</span>
         <ChevronDown className="size-4 text-muted" aria-hidden />
-        <span className="sr-only">Account menu</span>
+        <span className="sr-only">{t('nav.accountMenu')}</span>
       </button>
       {open && (
         <div role="menu" className="animate-toast-in absolute right-0 top-11 z-50 w-56 rounded-xl border border-border bg-card p-1.5 shadow-xl shadow-black/15">
@@ -48,19 +50,22 @@ export function UserMenu({ user }: { user: HeaderUser }) {
             <p className="truncate text-sm font-semibold">{user.displayName}</p>
             <p className="truncate text-xs text-muted">@{user.handle}</p>
           </div>
+          <Link role="menuitem" href="/ranks" className={item} onClick={() => setOpen(false)}>
+            <Trophy className="size-4" aria-hidden /> {t('nav.rankRoadmap')}
+          </Link>
           <Link role="menuitem" href={`/u/${user.handle}`} className={item} onClick={() => setOpen(false)}>
-            <User className="size-4" aria-hidden /> Profile
+            <User className="size-4" aria-hidden /> {t('nav.profile')}
           </Link>
           <Link role="menuitem" href="/settings" className={item} onClick={() => setOpen(false)}>
-            <Settings className="size-4" aria-hidden /> Settings
+            <Settings className="size-4" aria-hidden /> {t('nav.settings')}
           </Link>
           {user.isAdmin && (
             <Link role="menuitem" href="/admin" className={item} onClick={() => setOpen(false)}>
-              <Shield className="size-4" aria-hidden /> Admin
+              <Shield className="size-4" aria-hidden /> {t('nav.admin')}
             </Link>
           )}
           <button role="menuitem" onClick={signOut} className={`${item} text-danger`}>
-            <LogOut className="size-4" aria-hidden /> Sign out
+            <LogOut className="size-4" aria-hidden /> {t('nav.signOut')}
           </button>
         </div>
       )}

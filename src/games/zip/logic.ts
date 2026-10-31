@@ -1,3 +1,5 @@
+import type { Msg } from '@/i18n/translate';
+import { msg } from '../shared';
 import type { ZipPuzzle } from './types';
 
 export const wallKey = (a: [number, number], b: [number, number]) => {
@@ -10,21 +12,21 @@ export const wallKey = (a: [number, number], b: [number, number]) => {
  * orthogonally, never through a wall, starting on 1, ending on the highest
  * number and passing the numbers in order.
  */
-export function checkZip(puzzle: ZipPuzzle, path: [number, number][]): string | null {
+export function checkZip(puzzle: ZipPuzzle, path: [number, number][]): Msg | null {
   const n = puzzle.size;
-  if (path.length !== n * n) return 'The path must cover every cell.';
+  if (path.length !== n * n) return msg('zip.cover');
   const walls = new Set(puzzle.walls.map((w) => wallKey(w.a, w.b)));
   const seen = new Set<string>();
   for (let i = 0; i < path.length; i++) {
     const [r, c] = path[i];
-    if (r < 0 || c < 0 || r >= n || c >= n) return 'The path leaves the board.';
+    if (r < 0 || c < 0 || r >= n || c >= n) return msg('zip.outside');
     const key = `${r},${c}`;
-    if (seen.has(key)) return 'The path crosses itself.';
+    if (seen.has(key)) return msg('zip.crosses');
     seen.add(key);
     if (i > 0) {
       const [pr, pc] = path[i - 1];
-      if (Math.abs(pr - r) + Math.abs(pc - c) !== 1) return 'The path must move between neighbouring cells.';
-      if (walls.has(wallKey([pr, pc], [r, c]))) return 'The path goes through a wall.';
+      if (Math.abs(pr - r) + Math.abs(pc - c) !== 1) return msg('zip.adjacent');
+      if (walls.has(wallKey([pr, pc], [r, c]))) return msg('zip.wall');
     }
   }
   const index = new Map(path.map(([r, c], i) => [`${r},${c}`, i]));
@@ -32,11 +34,11 @@ export function checkZip(puzzle: ZipPuzzle, path: [number, number][]): string | 
   let last = -1;
   for (const w of ordered) {
     const at = index.get(`${w.r},${w.c}`)!;
-    if (at <= last) return `Reach ${w.n} after ${w.n - 1}.`;
+    if (at <= last) return msg('zip.order', { n: w.n, prev: w.n - 1 });
     last = at;
   }
-  if (index.get(`${ordered[0].r},${ordered[0].c}`) !== 0) return 'Start the path on 1.';
+  if (index.get(`${ordered[0].r},${ordered[0].c}`) !== 0) return msg('zip.start');
   const end = ordered[ordered.length - 1];
-  if (index.get(`${end.r},${end.c}`) !== path.length - 1) return `Finish the path on ${end.n}.`;
+  if (index.get(`${end.r},${end.c}`) !== path.length - 1) return msg('zip.finish', { n: end.n });
   return null;
 }

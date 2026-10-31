@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { DIFFICULTY_LABELS, GAMES } from '@/config/games';
+import { GAMES } from '@/config/games';
 import { DIFFICULTIES, GAME_IDS } from '@/games/types';
 import { Button, Card } from '@/components/ui';
 
@@ -14,7 +14,7 @@ async function run(body: Record<string, unknown>) {
 
 const BADGES = ['developer', 'moderator', 'tester', 'founder', 'contributor'];
 
-export function AdminUserTools({ userId, roles, badges, achievements }: { userId: string; roles: string[]; badges: string[]; achievements: { id: string; name: string }[] }) {
+export function AdminUserTools({ userId, roles, badges, excluded, achievements }: { userId: string; roles: string[]; badges: string[]; excluded: boolean; achievements: { id: string; name: string }[] }) {
   const router = useRouter();
   const [msg, setMsg] = useState<string | null>(null);
   const [ach, setAch] = useState(achievements[0]?.id ?? '');
@@ -62,6 +62,9 @@ export function AdminUserTools({ userId, roles, badges, achievements }: { userId
           </button>
         ))}
         <span className="mx-1 h-5 w-px bg-border" />
+        <button className={b} aria-pressed={excluded} onClick={() => act(excluded ? 'Include in leaderboards' : 'Exclude from leaderboards', { action: 'set-leaderboard-excluded', on: !excluded })}>
+          {excluded ? '✓ excluded from leaderboards' : 'Exclude from leaderboards'}
+        </button>
         <button className={`${b} text-danger`} onClick={() => act(roles.includes('admin') ? 'Revoke admin' : 'Grant admin', { action: 'set-role', role: 'admin', on: !roles.includes('admin') }, true)}>
           {roles.includes('admin') ? 'Revoke admin' : 'Grant admin'}
         </button>
@@ -93,7 +96,7 @@ export function PuzzleGenerator() {
         <select value={difficulty} onChange={(e) => setDifficulty(e.target.value as typeof difficulty)} className="h-9 rounded-lg border border-border bg-bg px-2 text-sm" aria-label="Difficulty">
           {DIFFICULTIES.map((d) => (
             <option key={d} value={d}>
-              {DIFFICULTY_LABELS[d]}
+              {d}
             </option>
           ))}
         </select>
@@ -109,6 +112,39 @@ export function PuzzleGenerator() {
         </Button>
       </div>
       {out && <pre className="max-h-80 overflow-auto rounded-lg bg-subtle p-3 font-mono text-[11px]">{out}</pre>}
+    </Card>
+  );
+}
+
+export function DeveloperShowcase({ handle }: { handle: string }) {
+  const router = useRouter();
+  const [msg, setMsg] = useState<string | null>(null);
+  const [confirm, setConfirm] = useState(false);
+  return (
+    <Card className="space-y-2 p-4 text-sm">
+      <p>
+        Puts <b>@{handle}</b> (configured in <code>src/config/site.ts</code>) into the maximum-progression showcase state: Developer badge, Legend-level XP via the
+        ledger, high streaks and mastery, all achievements, and excluded from public leaderboards. Only that account can receive it; everyone else&apos;s
+        progression is untouched.
+      </p>
+      <Button
+        size="sm"
+        variant={confirm ? 'danger' : 'secondary'}
+        onClick={async () => {
+          if (!confirm) return setConfirm(true);
+          setConfirm(false);
+          const r = await run({ action: 'apply-developer-showcase' });
+          setMsg(r.ok ? `Applied. @${handle} now has ${(r.result as { totalXp: number }).totalXp.toLocaleString('en-US')} XP.` : r.error);
+          router.refresh();
+        }}
+      >
+        {confirm ? 'Click again to apply' : 'Apply developer showcase'}
+      </Button>
+      {msg && (
+        <p role="status" className="text-xs text-muted">
+          {msg}
+        </p>
+      )}
     </Card>
   );
 }

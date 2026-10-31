@@ -6,7 +6,7 @@ import { HttpError, route } from '@/server/http';
 export const GET = route(
   async () => {
     const user = await currentUser();
-    if (!user) throw new HttpError(401, 'Sign in first.');
+    if (!user) throw new HttpError(401, 'errors.signInFirst');
     const data = await exportUserData(await getDb(), user.id);
     return new Response(JSON.stringify(data, null, 2), {
       headers: {

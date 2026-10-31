@@ -55,8 +55,8 @@ export const HANDLE_RE = /^[a-z0-9_-]{3,24}$/;
 export const normalizeHandle = (h: string) => h.trim().toLowerCase();
 
 export function validatePassword(pw: string): string | null {
-  if (pw.length < 10) return 'Use at least 10 characters.';
-  if (pw.length > 200) return 'That password is too long.';
+  if (pw.length < 10) return 'errors.passwordShort';
+  if (pw.length > 200) return 'errors.passwordLong';
   return null;
 }
 
@@ -131,16 +131,16 @@ export async function signUp(db: Db, input: SignUpInput, currentGuestId: string 
   const email = input.email.trim().toLowerCase();
   const handle = normalizeHandle(input.handle);
   const displayName = input.displayName.trim();
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) throw new AuthError('Enter a valid email address.');
-  if (!HANDLE_RE.test(handle) || handle.startsWith('guest-')) throw new AuthError('Handles are 3-24 characters: letters, numbers, - or _.');
-  if (!displayName || displayName.length > 40) throw new AuthError('Display names are 1-40 characters.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254) throw new AuthError('errors.emailInvalid');
+  if (!HANDLE_RE.test(handle) || handle.startsWith('guest-')) throw new AuthError('errors.handleInvalid');
+  if (!displayName || displayName.length > 40) throw new AuthError('errors.nameInvalid');
   const pwError = validatePassword(input.password);
   if (pwError) throw new AuthError(pwError);
   const hash = await hashPassword(input.password);
 
   return db.tx(async (tx) => {
-    if (await maybeOne(tx, 'select 1 from users where lower(email) = $1', [email])) throw new AuthError('That email already has an account.', 409);
-    if (await maybeOne(tx, 'select 1 from users where handle = $1', [handle])) throw new AuthError('That handle is taken.', 409);
+    if (await maybeOne(tx, 'select 1 from users where lower(email) = $1', [email])) throw new AuthError('errors.emailTaken', 409);
+    if (await maybeOne(tx, 'select 1 from users where handle = $1', [handle])) throw new AuthError('errors.handleTaken', 409);
     if (currentGuestId) {
       const upgraded = await tx.query<UserRow>(
         `update users set email = $2, password_hash = $3, handle = $4, display_name = $5, is_guest = false, show_on_leaderboards = true
@@ -195,7 +195,7 @@ export async function resetPassword(db: Db, token: string, password: string, now
       `update password_resets set used_at = $2::timestamptz where token_hash = $1 and used_at is null and expires_at > $2::timestamptz returning user_id`,
       [sha256(token), now.toISOString()],
     );
-    if (!reset) throw new AuthError('This reset link is invalid or has expired.');
+    if (!reset) throw new AuthError('errors.resetInvalid');
     await tx.query('update users set password_hash = $2 where id = $1', [reset.user_id, hash]);
     // Sign out everywhere after a reset.
     await tx.query('delete from auth_sessions where user_id = $1', [reset.user_id]);

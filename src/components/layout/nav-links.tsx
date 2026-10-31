@@ -2,18 +2,20 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useI18n } from '@/i18n/client';
 import { cn } from '@/components/ui';
 
 export const NAV = [
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/daily', label: 'Daily Set' },
-  { href: '/unlimited', label: 'Unlimited' },
-  { href: '/leaderboards', label: 'Leaderboards' },
-  { href: '/achievements', label: 'Achievements' },
-];
+  { href: '/dashboard', key: 'nav.dashboard' },
+  { href: '/daily', key: 'nav.daily' },
+  { href: '/unlimited', key: 'nav.unlimited' },
+  { href: '/leaderboards', key: 'nav.leaderboards' },
+  { href: '/achievements', key: 'nav.achievements' },
+] as const;
 
 export function NavLinks() {
   const path = usePathname();
+  const { t } = useI18n();
   return (
     <ul className="flex items-center gap-1">
       {NAV.map((n) => {
@@ -23,9 +25,9 @@ export function NavLinks() {
             <Link
               href={n.href}
               aria-current={active ? 'page' : undefined}
-              className={cn('rounded-lg px-3 py-1.5 text-sm font-medium transition', active ? 'bg-subtle text-fg' : 'text-muted hover:text-fg')}
+              className={cn('whitespace-nowrap rounded-lg px-2.5 py-1.5 text-sm font-medium transition', active ? 'bg-subtle text-fg' : 'text-muted hover:text-fg')}
             >
-              {n.label}
+              {t(n.key)}
             </Link>
           </li>
         );

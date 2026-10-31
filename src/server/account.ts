@@ -1,6 +1,7 @@
 import 'server-only';
 import { z } from 'zod';
 import { THEME_IDS } from '@/config/themes';
+import { LOCALES } from '@/i18n/config';
 import { maybeOne, type Db, type Queryable } from '@/lib/db';
 import { AuthError, verifyPassword } from './users';
 
@@ -12,6 +13,7 @@ export const settingsSchema = z
     showOnLeaderboards: z.boolean(),
     theme: z.enum(THEME_IDS),
     soundEnabled: z.boolean(),
+    language: z.enum(LOCALES.map((l) => l.code) as [string, ...string[]]),
   })
   .partial();
 
@@ -30,19 +32,20 @@ export async function updateSettings(db: Db, userId: string, input: SettingsInpu
     if (input.profilePublic !== undefined) set('profile_public', input.profilePublic);
     if (input.showOnLeaderboards !== undefined) set('show_on_leaderboards', input.showOnLeaderboards);
     if (u.length) await tx.query(`update users set ${u.join(', ')} where id = $1`, params);
-    if (input.theme !== undefined || input.soundEnabled !== undefined) {
+    if (input.theme !== undefined || input.soundEnabled !== undefined || input.language !== undefined) {
       await tx.query(
-        `insert into preferences (user_id, theme, sound_enabled) values ($1, coalesce($2, 'system'), coalesce($3, true))
+        `insert into preferences (user_id, theme, sound_enabled, language) values ($1, coalesce($2, 'system'), coalesce($3, true), $4)
          on conflict (user_id) do update set theme = coalesce($2, preferences.theme),
-           sound_enabled = coalesce($3, preferences.sound_enabled), updated_at = now()`,
-        [userId, input.theme ?? null, input.soundEnabled ?? null],
+           sound_enabled = coalesce($3, preferences.sound_enabled),
+           language = coalesce($4, preferences.language), updated_at = now()`,
+        [userId, input.theme ?? null, input.soundEnabled ?? null, input.language ?? null],
       );
     }
   });
 }
 
 export async function getPreferences(db: Queryable, userId: string) {
-  return maybeOne<{ theme: string; sound_enabled: boolean }>(db, 'select theme, sound_enabled from preferences where user_id = $1', [userId]);
+  return maybeOne<{ theme: string; sound_enabled: boolean; language: string | null }>(db, 'select theme, sound_enabled, language from preferences where user_id = $1', [userId]);
 }
 
 /** Everything we store about a player, as JSON. Password hashes and session ids are excluded. */
@@ -54,7 +57,7 @@ export async function exportUserData(db: Queryable, userId: string) {
   return {
     exportedAt: new Date().toISOString(),
     profile,
-    preferences: await q('select theme, sound_enabled, updated_at from preferences where user_id = $1'),
+    preferences: await q('select theme, sound_enabled, language, updated_at from preferences where user_id = $1'),
     stats: await q('select * from user_stats where user_id = $1'),
     streaks: await q('select kind, current, best, last_date, lost_value, lost_last_date from streaks where user_id = $1'),
     mastery: await q('select game, xp, completions, best_score, best_time_ms from mastery where user_id = $1'),
@@ -81,10 +84,10 @@ export async function deleteAccount(db: Db, userId: string, confirm: { handle: s
     'select handle, is_guest, password_hash from users where id = $1',
     [userId],
   );
-  if (!user) throw new AuthError('Account not found.', 404);
-  if (confirm.handle.trim().toLowerCase() !== user.handle) throw new AuthError('Type your handle exactly to confirm.');
+  if (!user) throw new AuthError('errors.accountNotFound', 404);
+  if (confirm.handle.trim().toLowerCase() !== user.handle) throw new AuthError('errors.confirmHandle');
   if (!user.is_guest && !(confirm.password && user.password_hash && (await verifyPassword(confirm.password, user.password_hash))))
-    throw new AuthError('Password is incorrect.', 403);
+    throw new AuthError('errors.wrongPassword', 403);
   await db.tx(async (tx) => {
     // Puzzles for Unlimited sessions are personal; Daily puzzles are shared and kept.
     const puzzles = await tx.query<{ puzzle_id: string }>(`select puzzle_id from game_sessions where user_id = $1 and mode = 'unlimited'`, [userId]);

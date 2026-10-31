@@ -1,21 +1,29 @@
 import { test } from '@playwright/test';
 const OUT = process.env.SHOTS_DIR!;
 test.skip(!OUT, 'screenshots only on demand');
-test('screens', async ({ page }) => {
+test('screens', async ({ page, context }) => {
   await page.setViewportSize({ width: 1280, height: 900 });
-  await page.goto('/'); await page.screenshot({ path: `${OUT}/landing.png`, fullPage: true });
-  for (const g of ['queens', 'zip', 'patches', 'tango', 'werd', 'pinpoint', 'crossclimb', 'sudoku']) {
-    await page.goto(`/play/${g}?mode=unlimited&difficulty=normal`);
-    await page.waitForTimeout(1500);
-    await page.screenshot({ path: `${OUT}/play-${g}.png` });
-  }
-  await page.goto('/dashboard'); await page.screenshot({ path: `${OUT}/dashboard.png`, fullPage: true });
-  await page.goto('/settings'); await page.getByRole('radio', { name: /Tokyo Night/ }).click(); await page.waitForTimeout(300);
-  await page.goto('/play/queens?mode=unlimited&difficulty=hard'); await page.waitForTimeout(1500);
-  await page.screenshot({ path: `${OUT}/queens-tokyo.png` });
-  await page.goto('/achievements'); await page.screenshot({ path: `${OUT}/achievements-tokyo.png` });
+  await page.goto('/play/crossclimb?mode=unlimited&difficulty=normal');
+  await page.waitForTimeout(2000);
+  await page.screenshot({ path: `${OUT}/p22-crossclimb.png`, fullPage: true });
+  await page.goto('/play/pinpoint?mode=unlimited&difficulty=normal');
+  await page.waitForTimeout(1500);
+  await page.getByPlaceholder(/category/i).fill('animals');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `${OUT}/p22-pinpoint.png` });
+  await page.goto('/ranks');
+  await page.screenshot({ path: `${OUT}/p22-ranks.png`, fullPage: true });
+  await page.goto('/dashboard');
+  await page.screenshot({ path: `${OUT}/p22-dashboard.png` });
+  await context.addCookies([{ name: 'gh-lang', value: 'hi', url: 'http://localhost:3200' }]);
+  await page.goto('/');
+  await page.screenshot({ path: `${OUT}/p22-landing-hi.png` });
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/dashboard'); await page.screenshot({ path: `${OUT}/mobile-dashboard.png`, fullPage: true });
-  await page.goto('/play/zip?mode=unlimited&difficulty=hard'); await page.waitForTimeout(1500);
-  await page.screenshot({ path: `${OUT}/mobile-zip.png` });
+  await context.addCookies([{ name: 'gh-lang', value: 'en', url: 'http://localhost:3200' }]);
+  await page.goto('/play/crossclimb?mode=unlimited&difficulty=hard');
+  await page.waitForTimeout(2000);
+  await page.screenshot({ path: `${OUT}/p22-mobile-crossclimb.png`, fullPage: true });
+  await page.goto('/leaderboards');
+  await page.screenshot({ path: `${OUT}/p22-mobile-footer.png`, fullPage: true });
 });

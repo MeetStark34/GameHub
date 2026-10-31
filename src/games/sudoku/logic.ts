@@ -1,17 +1,19 @@
+import type { Msg } from '@/i18n/translate';
+import { msg } from '../shared';
 import type { SudokuPuzzle } from './types';
 
 const boxOf = (p: Pick<SudokuPuzzle, 'size' | 'boxRows' | 'boxCols'>, r: number, c: number) =>
   Math.floor(r / p.boxRows) * (p.size / p.boxCols) + Math.floor(c / p.boxCols);
 
 /** Every row, column and box contains 1..size exactly once; givens unchanged. */
-export function checkSudoku(puzzle: SudokuPuzzle, grid: number[][]): string | null {
+export function checkSudoku(puzzle: SudokuPuzzle, grid: number[][]): Msg | null {
   const n = puzzle.size;
-  if (grid.length !== n || grid.some((row) => row.length !== n)) return 'The grid is the wrong shape.';
+  if (grid.length !== n || grid.some((row) => row.length !== n)) return msg('sudoku.shape');
   for (let r = 0; r < n; r++) {
     for (let c = 0; c < n; c++) {
       const v = grid[r][c];
-      if (!Number.isInteger(v) || v < 1 || v > n) return 'Fill every cell.';
-      if (puzzle.givens[r][c] && puzzle.givens[r][c] !== v) return 'A given number was changed.';
+      if (!Number.isInteger(v) || v < 1 || v > n) return msg('sudoku.fill');
+      if (puzzle.givens[r][c] && puzzle.givens[r][c] !== v) return msg('sudoku.given');
     }
   }
   for (let i = 0; i < n; i++) {
@@ -21,12 +23,12 @@ export function checkSudoku(puzzle: SudokuPuzzle, grid: number[][]): string | nu
       row.add(grid[i][j]);
       col.add(grid[j][i]);
     }
-    if (row.size !== n) return `Row ${i + 1} has a repeated number.`;
-    if (col.size !== n) return `Column ${i + 1} has a repeated number.`;
+    if (row.size !== n) return msg('sudoku.row', { n: i + 1 });
+    if (col.size !== n) return msg('sudoku.column', { n: i + 1 });
   }
   const boxes = Array.from({ length: n }, () => new Set<number>());
   for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) boxes[boxOf(puzzle, r, c)].add(grid[r][c]);
-  if (boxes.some((b) => b.size !== n)) return 'A box has a repeated number.';
+  if (boxes.some((b) => b.size !== n)) return msg('sudoku.box');
   return null;
 }
 

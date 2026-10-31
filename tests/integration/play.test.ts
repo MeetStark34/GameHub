@@ -2,11 +2,13 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { Db } from '@/lib/db';
 import { GAME_IDS, type GameId } from '@/games/types';
 import { REPAIR_CARDS, XP_ECONOMY } from '@/config/economy';
-import { actOnSession, ensureDailySet, startSession, PlayError } from '@/server/play';
+import { actOnSession, chooseDailyPuzzle, dailyDifficultyFor, dailySeed, ensureDailySet, puzzleFingerprint, startSession, PlayError } from '@/server/play';
+import { ENGINES } from '@/games/registry';
+import { createRng } from '@/lib/rng';
 import { grantPunch } from '@/server/progress';
 import { useRepairCard } from '@/server/streaks';
 import { createGuest } from '@/server/users';
-import { plus, solutionFor, testDb, winningAction } from '../helpers';
+import { plus, solutionFor, solveSession, testDb, winningAction } from '../helpers';
 
 let db: Db;
 beforeAll(async () => {
@@ -23,8 +25,7 @@ const streak = (userId: string, kind: string) =>
 
 async function play(userId: string, game: GameId, mode: 'daily' | 'unlimited', start: Date, seconds = 90) {
   const view = await startSession(db, { userId, game, mode, difficulty: 'easy', fresh: true, now: start });
-  const { solution } = await solutionFor(db, view.id);
-  return actOnSession(db, userId, view.id, winningAction(game, solution), plus(start, seconds));
+  return solveSession(db, userId, view.id, plus(start, seconds));
 }
 
 describe('daily set', () => {
@@ -70,7 +71,7 @@ describe('completing games', () => {
     // Too fast to be plausible: refused but not failed.
     const tooFast = await actOnSession(db, u.id, view.id, action, plus(start, 1));
     expect(tooFast.solved).toBe(false);
-    expect(tooFast.message).toMatch(/faster/);
+    expect(tooFast.message?.key).toBe('errors.tooFast');
 
     // Wrong board: a free retry with a message.
     const wrong = await actOnSession(db, u.id, view.id, { type: 'submit', solution: [[1]] }, plus(start, 20));
@@ -236,3 +237,67 @@ describe('gold repair cards', () => {
     await expect(useRepairCard(db, u.id, 'normal', 'req-2', now)).rejects.toBeInstanceOf(PlayError);
   });
 });
+
+describe('daily set uniqueness and history', () => {
+  it('different UTC dates get different puzzles for every game; history is recorded', async () => {
+    const dates = ['2026-08-01', '2026-08-02', '2026-08-03', '2026-08-04', '2026-08-05', '2026-08-06', '2026-08-07'];
+    for (const d of dates) await ensureDailySet(db, d);
+    const rows = await db.query<{ game: string; fingerprint: string; utc_date: string }>(
+      `select game, fingerprint, utc_date from daily_puzzle_history where utc_date = any($1::text[])`,
+      [dates],
+    );
+    expect(rows).toHaveLength(dates.length * 8);
+    for (const game of GAME_IDS) {
+      const fps = rows.filter((r) => r.game === game).map((r) => r.fingerprint);
+      expect(new Set(fps).size, game).toBe(dates.length);
+    }
+    const dp = await db.query<{ n: number }>(`select count(*)::int n from daily_puzzles where utc_date = '2026-08-03' and fingerprint is not null`);
+    expect(dp[0].n).toBe(8);
+  });
+
+  it('rejects a previously used puzzle and moves to the next deterministic candidate', async () => {
+    const target = '2026-09-10';
+    const difficulty = dailyDifficultyFor(target);
+    const first = chooseDailyPuzzle('werd', target, difficulty, new Map());
+    expect(first.attempt).toBe(0);
+    // Pretend that exact puzzle was already used on an earlier date.
+    await db.query(`insert into daily_puzzle_history (game, utc_date, fingerprint) values ('werd', '2026-01-01', $1)`, [first.fingerprint]);
+    await ensureDailySet(db, target);
+    const chosen = await db.query<{ fingerprint: string; attempt: number; reused: boolean }>(
+      `select fingerprint, attempt, reused from daily_puzzles where utc_date = $1 and game = 'werd'`,
+      [target],
+    );
+    expect(chosen[0].fingerprint).not.toBe(first.fingerprint);
+    expect(chosen[0].attempt).toBeGreaterThan(0);
+    expect(chosen[0].reused).toBe(false);
+    // Deterministic: same history -> same choice.
+    const again = chooseDailyPuzzle('werd', target, difficulty, new Map([[first.fingerprint, '2026-01-01']]));
+    expect(again.fingerprint).toBe(chosen[0].fingerprint);
+  });
+
+  it('when a pool is exhausted, reuses the least recently used puzzle and flags it', () => {
+    const date = '2026-09-11';
+    const d = dailyDifficultyFor(date);
+    const cands = [0, 1, 2].map((a) => chooseDailyPuzzle('pinpoint', date, d, new Map(), 1 + a));
+    // Mark every candidate in the first 3 attempts as used, the 2nd one longest ago.
+    const fps = [0, 1, 2].map((a) => ({ a, fp: chooseCandidateFp('pinpoint', date, d, a) }));
+    const used = new Map(fps.map(({ a, fp }) => [fp, a === 1 ? '2025-01-01' : '2026-09-01']));
+    const pick = chooseDailyPuzzle('pinpoint', date, d, used, 3);
+    expect(pick.reused).toBe(true);
+    expect(used.get(pick.fingerprint)).toBe('2025-01-01');
+    expect(cands[0].reused).toBe(false);
+  });
+
+  it('daily Tango is 6x6 on every weekday', async () => {
+    for (const d of ['2026-08-01', '2026-08-02', '2026-08-03', '2026-08-07']) {
+      const set = await ensureDailySet(db, d);
+      const p = await db.query<{ data: { size: number } }>('select data from puzzles where id = $1', [set.puzzles.tango]);
+      expect(p[0].data.size, d).toBe(6);
+    }
+  });
+});
+
+function chooseCandidateFp(game: GameId, date: string, difficulty: Parameters<typeof chooseDailyPuzzle>[2], attempt: number) {
+  const { puzzle } = ENGINES[game].generate(createRng(dailySeed(date, game, attempt)), difficulty, { mode: 'daily' });
+  return puzzleFingerprint(game, puzzle);
+}

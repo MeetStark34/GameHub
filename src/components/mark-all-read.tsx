@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { Button } from './ui';
 
-export function MarkAllRead() {
+export function MarkAllRead({ label }: { label: string }) {
   const router = useRouter();
   return (
     <Button
@@ -14,7 +14,7 @@ export function MarkAllRead() {
         router.refresh();
       }}
     >
-      Mark all read
+      {label}
     </Button>
   );
 }

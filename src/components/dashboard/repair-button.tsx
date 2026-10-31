@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { ShieldCheck } from 'lucide-react';
+import { useI18n } from '@/i18n/client';
 import { useToasts } from '@/components/providers';
 import { Button } from '@/components/ui';
 
@@ -12,10 +13,10 @@ export function RepairButton({ kind, restoresTo, missedDays, cardsHeld }: { kind
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { push } = useToasts();
+  const { t, msg } = useI18n();
   const router = useRouter();
 
-  if (cardsHeld < 1)
-    return <p className="text-xs text-muted">Broken streak of {restoresTo} days is repairable for a while. Earn a Gold Repair Card to fix it.</p>;
+  if (cardsHeld < 1) return <p className="text-xs text-muted">{t('streak.noCards', { count: restoresTo })}</p>;
 
   async function repair() {
     setBusy(true);
@@ -27,7 +28,7 @@ export function RepairButton({ kind, restoresTo, missedDays, cardsHeld }: { kind
     });
     const json = await res.json().catch(() => ({}));
     setBusy(false);
-    if (!res.ok) return setError(json.error ?? 'Repair failed.');
+    if (!res.ok) return setError(json.code ? msg(json.code) : t('streak.repairFailed'));
     push(json.events ?? []);
     router.refresh();
   }
@@ -36,18 +37,16 @@ export function RepairButton({ kind, restoresTo, missedDays, cardsHeld }: { kind
     <div className="space-y-1.5">
       {!confirming ? (
         <Button size="sm" variant="secondary" onClick={() => setConfirming(true)}>
-          <ShieldCheck className="size-4 text-gold" aria-hidden /> Repair to {restoresTo} days
+          <ShieldCheck className="size-4 text-gold" aria-hidden /> {t('streak.repairTo', { count: restoresTo })}
         </Button>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-xs">
-            Use 1 of {cardsHeld} cards to bridge {missedDays} missed day{missedDays === 1 ? '' : 's'}?
-          </span>
+          <span className="text-xs">{t('streak.repairConfirm', { cards: cardsHeld, missed: missedDays })}</span>
           <Button size="sm" onClick={repair} disabled={busy}>
-            Use card
+            {t('streak.useCard')}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => setConfirming(false)}>
-            Cancel
+            {t('common.cancel')}
           </Button>
         </div>
       )}

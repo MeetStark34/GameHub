@@ -1,6 +1,7 @@
 import 'server-only';
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
+import { englishOf } from '@/i18n/translate';
 import { PlayError } from './play';
 import { AuthError } from './users';
 
@@ -28,7 +29,7 @@ export function assertSameOrigin(req: Request) {
   } catch {
     throw new HttpError(403, 'Bad origin.');
   }
-  if (originHost !== host) throw new HttpError(403, 'Cross-site request blocked.');
+  if (originHost !== host) throw new HttpError(403, 'errors.crossSite');
   const type = req.headers.get('content-type') ?? '';
   if (req.method !== 'GET' && req.method !== 'DELETE' && !type.includes('application/json'))
     throw new HttpError(415, 'Expected JSON.');
@@ -45,6 +46,9 @@ export async function readJson(req: Request, maxBytes = 64 * 1024): Promise<unkn
   }
 }
 
+/** Error messages are i18n keys (errors.*): send English text plus the key for the client to translate. */
+const errorBody = (message: string) => (message.startsWith('errors.') ? { error: englishOf({ key: message }), code: message } : { error: message });
+
 type Handler<C> = (req: Request, ctx: C) => Promise<Response | unknown>;
 
 /** Wraps a route handler with CSRF checks and a consistent JSON error shape. */
@@ -57,10 +61,10 @@ export function route<C = unknown>(fn: Handler<C>, opts: { mutation?: boolean } 
       return NextResponse.json(out ?? { ok: true }, { headers: { 'Cache-Control': 'no-store' } });
     } catch (err) {
       if (err instanceof HttpError || err instanceof PlayError || err instanceof AuthError)
-        return NextResponse.json({ error: err.message }, { status: err.status });
-      if (err instanceof ZodError) return NextResponse.json({ error: 'Invalid request.', issues: err.issues.slice(0, 5) }, { status: 400 });
+        return NextResponse.json(errorBody(err.message), { status: err.status });
+      if (err instanceof ZodError) return NextResponse.json({ ...errorBody('errors.invalid'), issues: err.issues.slice(0, 5) }, { status: 400 });
       console.error('[api]', err);
-      return NextResponse.json({ error: 'Something went wrong on our side.' }, { status: 500 });
+      return NextResponse.json(errorBody('errors.generic'), { status: 500 });
     }
   };
 }

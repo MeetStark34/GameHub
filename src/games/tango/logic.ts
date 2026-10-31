@@ -1,3 +1,5 @@
+import type { Msg } from '@/i18n/translate';
+import { msg } from '../shared';
 import type { TangoEdge, TangoPuzzle } from './types';
 
 /**
@@ -8,13 +10,13 @@ import type { TangoEdge, TangoPuzzle } from './types';
  *  4. "=" edges join equal cells, "x" edges join opposite cells;
  *  5. pre-filled cells cannot change.
  */
-export function checkTango(puzzle: TangoPuzzle, grid: number[][]): string | null {
+export function checkTango(puzzle: TangoPuzzle, grid: number[][]): Msg | null {
   const n = puzzle.size;
-  if (grid.length !== n || grid.some((row) => row.length !== n)) return 'The grid is the wrong shape.';
+  if (grid.length !== n || grid.some((row) => row.length !== n)) return msg('tango.shape');
   for (let r = 0; r < n; r++)
     for (let c = 0; c < n; c++) {
-      if (grid[r][c] !== 0 && grid[r][c] !== 1) return 'Fill every cell.';
-      if (puzzle.givens[r][c] !== -1 && puzzle.givens[r][c] !== grid[r][c]) return 'A fixed cell was changed.';
+      if (grid[r][c] !== 0 && grid[r][c] !== 1) return msg('tango.fill');
+      if (puzzle.givens[r][c] !== -1 && puzzle.givens[r][c] !== grid[r][c]) return msg('tango.fixed');
     }
   for (let i = 0; i < n; i++) {
     let rowSuns = 0;
@@ -23,17 +25,17 @@ export function checkTango(puzzle: TangoPuzzle, grid: number[][]): string | null
       if (grid[i][j] === 0) rowSuns++;
       if (grid[j][i] === 0) colSuns++;
     }
-    if (rowSuns * 2 !== n) return `Row ${i + 1} must have equal suns and moons.`;
-    if (colSuns * 2 !== n) return `Column ${i + 1} must have equal suns and moons.`;
+    if (rowSuns * 2 !== n) return msg('tango.row', { n: i + 1 });
+    if (colSuns * 2 !== n) return msg('tango.column', { n: i + 1 });
   }
   for (let i = 0; i < n; i++)
     for (let j = 0; j + 2 < n; j++) {
-      if (grid[i][j] === grid[i][j + 1] && grid[i][j] === grid[i][j + 2]) return 'Three in a row is not allowed.';
-      if (grid[j][i] === grid[j + 1][i] && grid[j][i] === grid[j + 2][i]) return 'Three in a column is not allowed.';
+      if (grid[i][j] === grid[i][j + 1] && grid[i][j] === grid[i][j + 2]) return msg('tango.threeRow');
+      if (grid[j][i] === grid[j + 1][i] && grid[j][i] === grid[j + 2][i]) return msg('tango.threeColumn');
     }
   for (const e of puzzle.edges) {
     const same = grid[e.a[0]][e.a[1]] === grid[e.b[0]][e.b[1]];
-    if (same !== (e.kind === 'same')) return e.kind === 'same' ? 'An "=" pair must match.' : 'An "x" pair must differ.';
+    if (same !== (e.kind === 'same')) return msg(e.kind === 'same' ? 'tango.same' : 'tango.diff');
   }
   return null;
 }

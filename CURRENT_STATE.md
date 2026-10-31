@@ -1,49 +1,70 @@
-# Current state (2026-10-31)
+# Current state (2026-10-31, after Phase 22)
 
 ## Summary
-GameHub is functionally complete locally. All eight games are playable in
-Daily and Unlimited modes at four difficulties. The full progression system
-runs server-side and is verified by tests. **It has not been deployed**, and
-it has not been run against a real Supabase database.
+GameHub runs completely locally: 8 games × Daily/Unlimited × 4
+difficulties, the full server-side progression system, 4 interface
+languages, and an admin/developer dashboard. **It is not deployed**, and the
+Supabase database has not been connected (the password supplied was rejected
+by Supabase; see AI_HANDOFF).
 
-## Verified
-- `npm run lint`: clean
-- `npm run typecheck`: clean
-- `npm test`: **87/87 pass** (11 files: 8 game suites, registry, progression, integration on real Postgres via PGlite)
-- `npm run build`: passes, no warnings
-- `npm run test:e2e`: **10/10 pass** (desktop journey + Pixel 7 mobile), against a production build
-- Manual screenshot review: landing, all 8 boards, dashboard, Tokyo Night theme, mobile dashboard and Zip
+## Verified at handoff
+- `npm run lint`: clean · `npm run typecheck`: clean · `npm run build`: passes, no warnings
+- `npm test`: **114/114** (13 files: 8 game suites, registry, progression, i18n, 2 integration files on real Postgres via PGlite)
+- `npm run test:e2e`: **13 passed** (desktop journey, language, Pixel 7 mobile) plus one on-demand screenshot spec (skipped)
+- Screenshot review: Crossclimb, Pinpoint, Rank Roadmap, Hindi landing, mobile
 
-## Working
-Games (all 8 × 4 difficulties) · shared immutable Daily Set · Unlimited ·
-server validation of every move · scoring · XP ledger · ranks · mastery ·
-Normal and True Player streaks · punches, cards, pocket-full conversion,
-repairs · 47 achievements with popups · notifications · sounds · 11 themes ·
-landing · dashboard · Daily and Unlimited pages · results panel · profiles ·
-leaderboards (9 boards) · settings, privacy, export, delete · guest → member
-upgrade · login, logout, password reset flow · admin with dev tools and
-audit log · reset ticker · SEO basics.
+## Phase 22 delivered
+1. **Languages**: EN (default) / FR / HI / RU via a central dictionary
+   (`src/i18n`). Header and Settings selectors; choice saved to cookie and
+   account; browser language as first-visit fallback. Covers navigation,
+   every player page, game rules, board labels, engine feedback, API errors,
+   toasts, stored notifications, achievements and footer.
+2. **Crossclimb rebuilt**: clued rungs shown scrambled → solve → reorder into
+   a one-letter ladder (ordering unique by construction) → unlocks clued top
+   and bottom words. 380+ original clues. Difficulty = rung count and hints.
+3. **Pinpoint rebuilt**: free-text category guessing with alias, plural and
+   typo tolerance; wrong guesses reveal clues; multiple-choice assist only
+   after the clues run out (score cost). 177 categories (from 62) in family
+   files.
+4. **Daily Tango is 6×6** (Unlimited keeps 8×8 for Hard and Expert).
+5. **Daily uniqueness**: fingerprints plus `daily_puzzle_history`; repeats
+   are rejected deterministically, with a flagged least-recently-used
+   fallback (docs/DAILY.md).
+6. **Reset ticker on the Dashboard only** (`src/app/dashboard/layout.tsx`).
+7. **Footer credit** "Made with 💙 Love by MStark", linked to `/u/mstark`
+   (configured in `src/config/site.ts`).
+8. **Header controls**: rank (links to `/ranks`), streak, Themes popover
+   (all 11 themes), Language popover.
+9–11. **Mr. Stark developer profile**: an admin action applies the showcase
+   (Developer badge, Legend XP through the ledger, high streaks and mastery,
+   all achievements) to the configured account only. `leaderboard_excluded`
+   removes it from every public board at query level.
+12. **Rank Roadmap page** `/ranks`.
+13. **XP economy file**: `src/config/economy.ts` (see README).
+14. **Developer dashboard** `/admin`, with tabs: Overview, Daily puzzles,
+   Activity & suspicious, Users & dev tools, System & audit.
 
 ## Incomplete or unverified
-1. **Deployment**: no Supabase project or Vercel deployment yet. The
-   postgres.js driver path is written but untested live.
-2. **Password-reset email**: needs `RESEND_API_KEY`. Without it the link is
-   only logged (dev). Not tested against Resend.
-3. **OAuth**: not implemented.
-4. **Signing in from a guest browser** discards guest progress (no merge).
-5. **E2E solves only Queens and Mini Sudoku through the UI.** The other six
-   boards were checked visually but not played through by automated tests;
-   their engines and server flow are fully tested.
-6. **Accessibility**: keyboard play, ARIA labels and reduced motion are
-   implemented, but no axe or screen-reader audit has been done.
-7. **No CSP header** and no Open Graph image.
-8. **Unlimited puzzle cleanup**: abandoned Unlimited sessions are never purged.
-9. **Pinpoint content**: 62 categories; repeats will be noticeable over weeks.
-10. Admin has no reports or moderation queue. Config (XP, achievements,
-    themes) is edited in code by design, not in the admin UI.
+1. **Supabase not connected**: the supplied password failed authentication
+   (`28P01`). No migrations have been applied remotely, and the postgres.js
+   path is untested live.
+2. **Mr. Stark account does not exist yet.** Sign up as handle `mstark`, then
+   apply the showcase from /admin → Users & dev tools (see AI_HANDOFF).
+   The brief asked for both "Elite" (item 9) and "Legend-level" (item 10);
+   the default is Legend (1,000,000 XP), and `targetXp: 60_000` gives Elite.
+3. Word-game content (Werd, Crossclimb, Pinpoint) is English-only by design;
+   the admin dashboard is English-only.
+4. Pinpoint Daily falls back to reuse after ~177 days unless categories are added.
+5. Not deployed; no OAuth; reset email needs Resend; no CSP; no axe audit;
+   E2E solves only Queens and Mini Sudoku through the UI. The new Crossclimb
+   and Pinpoint flows are covered by unit, integration and visual checks,
+   not by a full UI solve.
+6. Local dev databases created before Phase 22 contain old-format Crossclimb
+   and Pinpoint sessions; delete `.data/pglite` to start fresh. Production
+   has no data yet.
 
 ## Known bugs
 None known.
 
 ## Migrations
-`0001_init` (only migration).
+`0001_init`, `0002_phase22`.

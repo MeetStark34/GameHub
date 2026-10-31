@@ -23,10 +23,10 @@ describe('patches', () => {
 
   it('rejects overlap, gaps, wrong areas and wrong count', () => {
     const { puzzle, solution } = patchesEngine.generate(createRng('rej'), 'normal');
-    expect(checkPatches(puzzle, solution.slice(1))).toMatch(/exactly/);
+    expect(checkPatches(puzzle, solution.slice(1))).toMatchObject({ key: 'gameMsg.patches.count' });
     const grown = solution.map((x, i) => (i === 0 ? { ...x, w: x.w + 1 } : x));
     expect(checkPatches(puzzle, grown)).not.toBeNull();
     const outside = solution.map((x, i) => (i === 0 ? { ...x, r: 40 } : x));
-    expect(checkPatches(puzzle, outside)).toMatch(/outside/);
+    expect(checkPatches(puzzle, outside)).toMatchObject({ key: 'gameMsg.patches.outside' });
   });
 });

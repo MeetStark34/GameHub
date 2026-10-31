@@ -1,4 +1,5 @@
-import type { Cell } from '../shared';
+import type { Msg } from '@/i18n/translate';
+import { msg, type Cell } from '../shared';
 import type { QueensPuzzle, QueensSolution } from './types';
 
 /**
@@ -6,26 +7,26 @@ import type { QueensPuzzle, QueensSolution } from './types';
  * two crowns may touch, including diagonally.
  * Returns a player-facing error, or null when the placement is a solution.
  */
-export function checkQueens(puzzle: QueensPuzzle, crowns: Cell[]): string | null {
+export function checkQueens(puzzle: QueensPuzzle, crowns: Cell[]): Msg | null {
   const n = puzzle.size;
-  if (crowns.length !== n) return `Place exactly ${n} crowns.`;
+  if (crowns.length !== n) return msg('queens.count', { n });
   const rows = new Set<number>();
   const cols = new Set<number>();
   const regions = new Set<number>();
   for (const [r, c] of crowns) {
-    if (r < 0 || c < 0 || r >= n || c >= n) return 'A crown is outside the board.';
+    if (r < 0 || c < 0 || r >= n || c >= n) return msg('queens.outside');
     rows.add(r);
     cols.add(c);
     regions.add(puzzle.regions[r][c]);
   }
-  if (rows.size !== n) return 'Every row needs exactly one crown.';
-  if (cols.size !== n) return 'Every column needs exactly one crown.';
-  if (regions.size !== n) return 'Every colour region needs exactly one crown.';
+  if (rows.size !== n) return msg('queens.row');
+  if (cols.size !== n) return msg('queens.column');
+  if (regions.size !== n) return msg('queens.region');
   for (let i = 0; i < crowns.length; i++) {
     for (let j = i + 1; j < crowns.length; j++) {
       const [r1, c1] = crowns[i];
       const [r2, c2] = crowns[j];
-      if (Math.abs(r1 - r2) <= 1 && Math.abs(c1 - c2) <= 1) return 'Two crowns are touching.';
+      if (Math.abs(r1 - r2) <= 1 && Math.abs(c1 - c2) <= 1) return msg('queens.touching');
     }
   }
   return null;

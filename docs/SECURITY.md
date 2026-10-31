@@ -53,3 +53,12 @@ Export (`/api/me/export`) returns all personal data as JSON. Delete
 (`/api/me/delete`, password or handle confirmation) cascades. Emails are
 never shown publicly. Players can hide their profile and leave leaderboards.
 No legal review has been done; do not claim compliance.
+
+## Phase 22 notes
+- `leaderboard_excluded` is set only by admin actions (or the developer
+  showcase) and is never accepted from user settings.
+- The developer showcase only targets the account named in
+  `src/config/site.ts`, needs the admin role, and is audited.
+- The Developer badge never grants permissions (tested).
+- The language cookie is validated against the supported list; unknown
+  values fall back to English.

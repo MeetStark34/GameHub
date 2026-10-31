@@ -50,6 +50,19 @@ signing up.
 See `.env.example`. All game balance lives in `src/config/` and in each
 game's `config.ts`.
 
+**XP economy: `src/config/economy.ts`.** Safe to edit any number there:
+`baseByDifficulty` (XP per game by difficulty), `gameMultiplier`,
+`dailyMultiplier` (Daily vs Unlimited), `performanceBonus`, `perfectBonus`,
+`unlimitedTaper` / `unlimitedFloor`, `firstDailyGameBonus`,
+`dailySetCompleteBonus`, `streakMilestones`, `punchEarned`, `cardCreated`,
+`cardConverted`, and the repair-card rules in `REPAIR_CARDS`. Changes
+apply to future awards only; XP already earned stays in the ledger.
+Achievement XP is the `xp` field of each entry in `src/config/achievements.ts`.
+Rank thresholds are in `src/config/ranks.ts`; ranks are recomputed from XP,
+so editing thresholds never changes anyone's XP.
+
+Languages: see `docs/I18N.md`. Daily uniqueness: see `docs/DAILY.md`.
+
 ## Documentation
 
 Start with `PROJECT_MASTER.md`, then `CURRENT_STATE.md` and `AI_HANDOFF.md`.

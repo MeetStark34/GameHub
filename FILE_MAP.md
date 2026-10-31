@@ -1,18 +1,20 @@
 # File map
 
 ```
-db/migrations/0001_init.sql      Schema (append-only). Applied by lib/db migrate() or scripts/migrate.ts
+db/migrations/0001_init.sql, 0002_phase22.sql  Schema (append-only). Applied by lib/db migrate() or scripts/migrate.ts
 scripts/
   migrate.ts                     npm run db:migrate (Postgres via DATABASE_URL, else local PGlite)
   grant-role.ts                  npm run admin:grant -- <email> [admin|moderator] [--revoke]
   build-wordlists.mjs            Regenerates src/games/words/data from wordlist-english
 src/
+  i18n/                          languages: config, messages/{en,fr,hi,ru}.ts, translator, server/client hooks
   config/                        ALL tunable values (client-safe)
     games.ts                     names, rules copy, par/min seconds, daily difficulty rotation
     economy.ts                   XP economy, repair-card rules, daily grace period
     ranks.ts                     player + mastery rank ladders
     achievements.ts              achievement definitions + criterion types
     themes.ts                    the 11 themes (tokens are in app/globals.css)
+    site.ts                      DEVELOPER (footer credit handle, showcase values)
   games/                         Pure, deterministic engines (no DB, no clock)
     types.ts                     GameEngine contract, ids, difficulties
     shared.ts                    submit-style act() helper, grid utils
@@ -35,6 +37,8 @@ src/
     auth.ts                      cookie <-> user for the current request, role checks
     account.ts                   settings, export, delete
     admin.ts                     admin/dev actions + audit log
+    admin-dashboard.ts           admin dashboard aggregates
+    developer.ts                 developer showcase (configured account only)
     bootstrap.ts                 GAMEHUB_BOOTSTRAP_ADMINS
     http.ts                      route() wrapper: CSRF, JSON, errors
     email.ts, request.ts, solutions.ts

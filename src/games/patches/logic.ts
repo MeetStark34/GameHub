@@ -1,3 +1,5 @@
+import type { Msg } from '@/i18n/translate';
+import { msg } from '../shared';
 import type { PatchClue, PatchRect, PatchShape, PatchesPuzzle } from './types';
 
 export const shapeOf = (rect: Pick<PatchRect, 'h' | 'w'>): Exclude<PatchShape, 'any'> =>
@@ -13,27 +15,27 @@ const shapeFits = (clue: PatchClue, rect: PatchRect) => clue.shape === 'any' || 
  * overlapping; each rectangle holds exactly one clue, its area equals the
  * clue's number, and it matches the clue's shape hint if one is shown.
  */
-export function checkPatches(puzzle: PatchesPuzzle, rects: PatchRect[]): string | null {
+export function checkPatches(puzzle: PatchesPuzzle, rects: PatchRect[]): Msg | null {
   const { rows, cols, clues } = puzzle;
-  if (rects.length !== clues.length) return `Make exactly ${clues.length} patches.`;
+  if (rects.length !== clues.length) return msg('patches.count', { n: clues.length });
   const owner: number[][] = Array.from({ length: rows }, () => new Array(cols).fill(-1));
   for (let i = 0; i < rects.length; i++) {
     const rect = rects[i];
     if (rect.h < 1 || rect.w < 1 || rect.r < 0 || rect.c < 0 || rect.r + rect.h > rows || rect.c + rect.w > cols)
-      return 'A patch goes outside the board.';
+      return msg('patches.outside');
     for (let r = rect.r; r < rect.r + rect.h; r++)
       for (let c = rect.c; c < rect.c + rect.w; c++) {
-        if (owner[r][c] !== -1) return 'Patches cannot overlap.';
+        if (owner[r][c] !== -1) return msg('patches.overlap');
         owner[r][c] = i;
       }
   }
-  if (owner.some((row) => row.includes(-1))) return 'Every cell must belong to a patch.';
+  if (owner.some((row) => row.includes(-1))) return msg('patches.cover');
   for (const rect of rects) {
     const inside = clues.filter((k) => contains(rect, k.r, k.c));
-    if (inside.length !== 1) return 'Each patch needs exactly one number.';
+    if (inside.length !== 1) return msg('patches.oneNumber');
     const clue = inside[0];
-    if (rect.h * rect.w !== clue.area) return `The patch with ${clue.area} has the wrong size.`;
-    if (!shapeFits(clue, rect)) return `The patch with ${clue.area} should be ${clue.shape}.`;
+    if (rect.h * rect.w !== clue.area) return msg('patches.size', { n: clue.area });
+    if (!shapeFits(clue, rect)) return msg('patches.shape', { n: clue.area, shape: `@gameMsg.patches.shapes.${clue.shape}` });
   }
   return null;
 }

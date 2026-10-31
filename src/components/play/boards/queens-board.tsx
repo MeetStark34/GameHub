@@ -4,6 +4,7 @@ import { useCallback, useMemo, useRef } from 'react';
 import { Crown, X } from 'lucide-react';
 import { queensConflicts } from '@/games/queens/logic';
 import type { QueensPuzzle } from '@/games/queens/types';
+import { useI18n } from '@/i18n/client';
 import { Button, cn } from '@/components/ui';
 import { BoardFrame, cellAt, regionColor, useAutoSubmit, useGridFocus, useStoredState, type BoardProps } from '../board-kit';
 
@@ -11,6 +12,7 @@ type Mark = 0 | 1 | 2; // empty, x, crown
 
 export default function QueensBoard({ sessionId, puzzle, solved, busy, act }: BoardProps<QueensPuzzle>) {
   const n = puzzle.size;
+  const { t } = useI18n();
   const [marks, setMarks] = useStoredState<Mark[][]>(`gh-board-${sessionId}`, () => Array.from({ length: n }, () => Array<Mark>(n).fill(0)));
   const { focus, setFocus, move, gridRef } = useGridFocus(n, n);
   const drag = useRef<{ start: [number, number]; moved: boolean; last: string } | null>(null);
@@ -69,11 +71,11 @@ export default function QueensBoard({ sessionId, puzzle, solved, busy, act }: Bo
   };
 
   return (
-    <BoardFrame size={n} label={`Queens board, ${n} by ${n}`}>
+    <BoardFrame size={n} label={t('boards.board', { game: 'Queens', size: `${n}×${n}` })}>
       <div
         ref={gridRef}
         role="grid"
-        aria-label="Place crowns"
+        aria-label={t('boards.placeCrowns')}
         className="board grid overflow-hidden rounded-xl"
         style={{ gridTemplateColumns: `repeat(${n}, 1fr)` }}
         onPointerMove={onPointerMove}
@@ -93,7 +95,7 @@ export default function QueensBoard({ sessionId, puzzle, solved, busy, act }: Bo
                 role="gridcell"
                 tabIndex={isFocus ? 0 : -1}
                 disabled={solved}
-                aria-label={`Row ${r + 1}, column ${c + 1}, region ${reg + 1}: ${m === 2 ? 'crown' : m === 1 ? 'marked empty' : 'empty'}${bad ? ', conflict' : ''}`}
+                aria-label={`${t('boards.cell', { r: r + 1, c: c + 1 })}, ${t('boards.region', { n: reg + 1 })}: ${t(m === 2 ? 'boards.crown' : m === 1 ? 'boards.marked' : 'boards.empty')}${bad ? `, ${t('boards.conflict')}` : ''}`}
                 onPointerDown={(e) => onPointerDown(e, r, c)}
                 onKeyDown={(e) => {
                   if (move(e)) return;
@@ -116,10 +118,10 @@ export default function QueensBoard({ sessionId, puzzle, solved, busy, act }: Bo
       </div>
       <div className="mt-3 flex items-center justify-between text-sm text-muted">
         <span className="num">
-          {crowns.length}/{n} crowns
+          {t('boards.crowns', { count: crowns.length, total: n })}
         </span>
         <Button variant="ghost" size="sm" disabled={solved || busy} onClick={() => setMarks(Array.from({ length: n }, () => Array<Mark>(n).fill(0)))}>
-          Clear
+          {t('common.clear')}
         </Button>
       </div>
     </BoardFrame>

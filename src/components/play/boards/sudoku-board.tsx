@@ -4,11 +4,13 @@ import { useCallback, useMemo, useState } from 'react';
 import { Delete } from 'lucide-react';
 import { sudokuConflicts } from '@/games/sudoku/logic';
 import type { SudokuPuzzle } from '@/games/sudoku/types';
+import { useI18n } from '@/i18n/client';
 import { cn } from '@/components/ui';
 import { BoardFrame, useAutoSubmit, useGridFocus, useStoredState, type BoardProps } from '../board-kit';
 
 export default function SudokuBoard({ sessionId, puzzle, solved, act }: BoardProps<SudokuPuzzle>) {
   const n = puzzle.size;
+  const { t } = useI18n();
   const [grid, setGrid] = useStoredState<number[][]>(`gh-board-${sessionId}`, () => puzzle.givens.map((r) => r.slice()));
   const { focus, setFocus, move, gridRef } = useGridFocus(n, n);
   const [sel, setSel] = useState<[number, number] | null>(null);
@@ -32,7 +34,7 @@ export default function SudokuBoard({ sessionId, puzzle, solved, act }: BoardPro
   const box = (r: number, c: number) => Math.floor(r / puzzle.boxRows) * 10 + Math.floor(c / puzzle.boxCols);
 
   return (
-    <BoardFrame size={n} label={`Mini Sudoku, ${n} by ${n}`}>
+    <BoardFrame size={n} label={t('boards.board', { game: 'Mini Sudoku', size: `${n}×${n}` })}>
       <div
         ref={gridRef}
         role="grid"
@@ -53,7 +55,7 @@ export default function SudokuBoard({ sessionId, puzzle, solved, act }: BoardPro
                 data-c={c}
                 role="gridcell"
                 tabIndex={focus[0] === r && focus[1] === c ? 0 : -1}
-                aria-label={`Row ${r + 1}, column ${c + 1}: ${v || 'empty'}${given ? ', given' : ''}${bad ? ', conflict' : ''}`}
+                aria-label={`${t('boards.cell', { r: r + 1, c: c + 1 })}: ${v || t('boards.empty')}${given ? `, ${t('boards.given')}` : ''}${bad ? `, ${t('boards.conflict')}` : ''}`}
                 disabled={solved}
                 onClick={() => {
                   setSel([r, c]);
@@ -88,11 +90,11 @@ export default function SudokuBoard({ sessionId, puzzle, solved, act }: BoardPro
       </div>
       <div className="mt-4 grid gap-2" style={{ gridTemplateColumns: `repeat(${n + 1}, 1fr)` }}>
         {Array.from({ length: n }, (_, i) => i + 1).map((d) => (
-          <button key={d} disabled={solved} onClick={() => write(d)} className="h-12 rounded-xl border border-border bg-card font-display text-xl font-semibold hover:bg-elevated active:scale-95" aria-label={`Enter ${d}`}>
+          <button key={d} disabled={solved} onClick={() => write(d)} className="h-12 rounded-xl border border-border bg-card font-display text-xl font-semibold hover:bg-elevated active:scale-95" aria-label={t('boards.enter', { n: d })}>
             {d}
           </button>
         ))}
-        <button disabled={solved} onClick={() => write(0)} className="grid h-12 place-items-center rounded-xl border border-border bg-card hover:bg-elevated" aria-label="Erase">
+        <button disabled={solved} onClick={() => write(0)} className="grid h-12 place-items-center rounded-xl border border-border bg-card hover:bg-elevated" aria-label={t('boards.erase')}>
           <Delete className="size-5" aria-hidden />
         </button>
       </div>

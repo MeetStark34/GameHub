@@ -13,9 +13,9 @@ export const POST = route(async (req) => {
   const db = await getDb();
   const ipOk = await rateLimit(db, `login-ip:${clientIp(req)}`, 30, 900);
   const emailOk = await rateLimit(db, `login-email:${email.trim().toLowerCase()}`, 8, 900);
-  if (!ipOk || !emailOk) throw new HttpError(429, 'Too many attempts. Wait a few minutes and try again.');
+  if (!ipOk || !emailOk) throw new HttpError(429, 'errors.tooManyAttempts');
   const user = await verifyLogin(db, email, password);
-  if (!user) throw new HttpError(401, 'Email or password is incorrect.');
+  if (!user) throw new HttpError(401, 'errors.badLogin');
   await applyBootstrapAdmin(db, user);
   const { token, expires } = await createSession(db, user.id, false);
   await setSessionCookie(token, expires);

@@ -225,3 +225,8 @@ body {
   user-select: none;
   -webkit-user-select: none;
 }
+
+/* Letter-spacing breaks Devanagari conjuncts: keep tracking for Latin/Cyrillic only. */
+html[lang='hi'] [class*='tracking-'] {
+  letter-spacing: normal !important;
+}

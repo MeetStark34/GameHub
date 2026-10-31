@@ -30,7 +30,9 @@ test('1. visitor opens GameHub', async () => {
   await page.goto('/');
   await expect(page.getByRole('heading', { level: 1 })).toContainText('Your daily brain training');
   await expect(page.getByText('Play. Progress. Master.').first()).toBeVisible();
-  await expect(page.getByRole('region', { name: 'Daily Set reset countdown' })).toBeVisible();
+  // The reset ticker lives on the Dashboard only.
+  await expect(page.getByRole('region', { name: 'Daily Set reset countdown' })).toHaveCount(0);
+  await expect(page.getByRole('link', { name: 'MStark' })).toHaveAttribute('href', '/u/mstark');
 });
 
 test('2-7. Daily Queens: solve, XP, mastery, achievement, streak', async () => {
@@ -52,6 +54,7 @@ test('2-7. Daily Queens: solve, XP, mastery, achievement, streak', async () => {
   await expect(page.getByRole('status', { name: /Achievement unlocked: First Steps/ })).toBeVisible({ timeout: 10_000 });
 
   await page.goto('/dashboard');
+  await expect(page.getByRole('region', { name: 'Daily Set reset countdown' })).toBeVisible();
   await expect(page.getByText('1/8 done')).toBeVisible();
   const normal = page.locator('div', { has: page.getByText('Normal Streak', { exact: true }) }).first();
   await expect(normal).toContainText('1');
@@ -73,10 +76,11 @@ test('guest claims account (progress kept) and becomes bootstrap admin', async (
 });
 
 test('8-9. all eight Daily games -> True Player Streak (admin dev tool)', async () => {
-  await page.goto(`/admin?q=${handle}`);
-  await expect(page.getByRole('heading', { name: 'Admin' })).toBeVisible();
+  await page.goto(`/admin?tab=users&q=${handle}`);
+  await expect(page.getByRole('heading', { name: 'Developer dashboard' })).toBeVisible();
   await page.getByRole('button', { name: 'Complete Daily Set' }).first().click();
   await expect(page.getByText(/Complete Daily Set: done \(7 games\)/)).toBeVisible({ timeout: 30_000 });
+  await page.goto('/admin?tab=system');
   await expect(page.getByText('complete-daily-set').first()).toBeVisible(); // audit log row
   await page.goto('/dashboard');
   await expect(page.getByText('8/8 done')).toBeVisible();
@@ -109,6 +113,15 @@ test('11. theme switching is global and persistent', async () => {
   await expect(page.locator('html')).toHaveAttribute('data-theme', 'dracula');
   const bg = await page.evaluate(() => getComputedStyle(document.body).backgroundColor);
   expect(bg).toBe('rgb(33, 34, 44)');
+});
+
+test('rank control opens the Rank Roadmap', async () => {
+  await page.goto('/dashboard');
+  await page.getByRole('link', { name: /Rank roadmap/ }).first().click();
+  await page.waitForURL('**/ranks');
+  await expect(page.getByRole('heading', { name: 'Rank roadmap' })).toBeVisible();
+  await expect(page.getByText('You are here')).toBeVisible();
+  await expect(page.getByText('No upper limit')).toBeVisible();
 });
 
 test('12. public profile shows rank, streaks and mastery', async () => {

@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { GameEngine } from '../types';
+import { msg } from '../shared';
 import { answerWords, isWord, normalizeWord } from '../words/dictionary';
 import { WERD_CONFIG, WERD_PENALTY } from './config';
 import { markGuess, strictViolation } from './logic';
@@ -16,17 +17,18 @@ export const werdEngine: GameEngine<WerdPuzzle, string, WerdState, WerdClient> =
     const answer = rng.pick(answerWords(cfg.length));
     return { puzzle: { length: cfg.length, answer, strict: cfg.strict, parGuesses: cfg.parGuesses }, solution: answer };
   },
+  fingerprint: (p) => `word:${p.answer}`,
   initialState: () => ({ guesses: [] }),
   toClient: (p, s) => ({ length: p.length, strict: p.strict, parGuesses: p.parGuesses, guesses: s.guesses }),
   act(puzzle, state, action) {
     const parsed = actionSchema.safeParse(action);
-    if (!parsed.success) return { state, solved: false, message: 'Type a word to guess.' };
+    if (!parsed.success) return { state, solved: false, message: msg('werd.type') };
     const word = normalizeWord(parsed.data.word);
     if (!/^[a-z]+$/.test(word) || word.length !== puzzle.length)
-      return { state, solved: false, message: `Guesses must be ${puzzle.length} letters.` };
-    if (!isWord(word)) return { state, solved: false, message: 'Not in the word list.' };
-    if (state.guesses.some((g) => g.word === word)) return { state, solved: false, message: 'Already guessed.' };
-    if (state.guesses.length >= MAX_GUESSES_STORED) return { state, solved: false, message: 'Too many guesses.' };
+      return { state, solved: false, message: msg('werd.length', { n: puzzle.length }) };
+    if (!isWord(word)) return { state, solved: false, message: msg('werd.notWord') };
+    if (state.guesses.some((g) => g.word === word)) return { state, solved: false, message: msg('werd.repeat') };
+    if (state.guesses.length >= MAX_GUESSES_STORED) return { state, solved: false, message: msg('werd.tooMany') };
     if (puzzle.strict) {
       const why = strictViolation(word, state.guesses);
       if (why) return { state, solved: false, message: why };

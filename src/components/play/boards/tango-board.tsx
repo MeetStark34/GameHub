@@ -3,6 +3,7 @@
 import { useCallback, useMemo } from 'react';
 import { tangoConflicts } from '@/games/tango/logic';
 import type { TangoPuzzle } from '@/games/tango/types';
+import { useI18n } from '@/i18n/client';
 import { Button, cn } from '@/components/ui';
 import { BoardFrame, useAutoSubmit, useGridFocus, useStoredState, type BoardProps } from '../board-kit';
 
@@ -24,6 +25,7 @@ function Moon() {
 
 export default function TangoBoard({ sessionId, puzzle, solved, busy, act }: BoardProps<TangoPuzzle>) {
   const n = puzzle.size;
+  const { t } = useI18n();
   const [grid, setGrid] = useStoredState<number[][]>(`gh-board-${sessionId}`, () => puzzle.givens.map((r) => r.slice()));
   const { focus, setFocus, move, gridRef } = useGridFocus(n, n);
   const conflicts = useMemo(() => tangoConflicts(puzzle, grid), [puzzle, grid]);
@@ -41,7 +43,7 @@ export default function TangoBoard({ sessionId, puzzle, solved, busy, act }: Boa
 
   const pct = 100 / n;
   return (
-    <BoardFrame size={n} label={`Tango board, ${n} by ${n}`}>
+    <BoardFrame size={n} label={t('boards.board', { game: 'Tango', size: `${n}×${n}` })}>
       <div className="relative">
         <div ref={gridRef} role="grid" className="board grid gap-1 rounded-xl bg-cell-line p-1" style={{ gridTemplateColumns: `repeat(${n}, 1fr)` }}>
           {grid.map((row, r) =>
@@ -56,7 +58,7 @@ export default function TangoBoard({ sessionId, puzzle, solved, busy, act }: Boa
                   role="gridcell"
                   tabIndex={focus[0] === r && focus[1] === c ? 0 : -1}
                   disabled={solved}
-                  aria-label={`Row ${r + 1}, column ${c + 1}: ${v === 0 ? 'sun' : v === 1 ? 'moon' : 'empty'}${fixed ? ', fixed' : ''}${bad ? ', conflict' : ''}`}
+                  aria-label={`${t('boards.cell', { r: r + 1, c: c + 1 })}: ${t(v === 0 ? 'boards.sun' : v === 1 ? 'boards.moon' : 'boards.empty')}${fixed ? `, ${t('boards.fixed')}` : ''}${bad ? `, ${t('boards.conflict')}` : ''}`}
                   onClick={() => {
                     setFocus([r, c]);
                     cycle(r, c);
@@ -100,14 +102,14 @@ export default function TangoBoard({ sessionId, puzzle, solved, busy, act }: Boa
       <ul className="sr-only">
         {puzzle.edges.map((e, i) => (
           <li key={i}>
-            Row {e.a[0] + 1} column {e.a[1] + 1} and row {e.b[0] + 1} column {e.b[1] + 1} must be {e.kind === 'same' ? 'the same' : 'opposite'}.
+            {t('boards.edgeRule', { r1: e.a[0] + 1, c1: e.a[1] + 1, r2: e.b[0] + 1, c2: e.b[1] + 1, rel: t(e.kind === 'same' ? 'boards.same' : 'boards.opposite') })}
           </li>
         ))}
       </ul>
       <div className="mt-3 flex items-center justify-between text-sm text-muted">
-        <span>Tap: sun → moon → empty. Keys: S, M, Space.</span>
+        <span>{t('boards.tangoHelp')}</span>
         <Button variant="ghost" size="sm" disabled={solved || busy} onClick={() => setGrid(puzzle.givens.map((r) => r.slice()))}>
-          Clear
+          {t('common.clear')}
         </Button>
       </div>
     </BoardFrame>

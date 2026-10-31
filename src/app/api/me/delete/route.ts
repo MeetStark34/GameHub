@@ -8,7 +8,7 @@ const schema = z.object({ handle: z.string().max(40), password: z.string().max(2
 
 export const POST = route(async (req) => {
   const user = await currentUser();
-  if (!user) throw new HttpError(401, 'Sign in first.');
+  if (!user) throw new HttpError(401, 'errors.signInFirst');
   await deleteAccount(await getDb(), user.id, schema.parse(await readJson(req)));
   await clearSessionCookie();
   return { ok: true };

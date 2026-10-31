@@ -43,3 +43,11 @@ that user's Unlimited puzzles. Daily puzzles are shared and kept.
 
 Growth note: Unlimited sessions store one `puzzles` row each. A periodic
 cleanup of old, never-completed Unlimited sessions is not implemented yet.
+
+## Phase 22 (`0002_phase22.sql`)
+- `preferences.language`: interface language (en/fr/hi/ru).
+- `users.leaderboard_excluded`: admin-controlled; excluded players keep all
+  stats but are filtered out of every public leaderboard query.
+- `daily_puzzles.fingerprint | attempt | reused`, plus the new table
+  `daily_puzzle_history (game, utc_date, fingerprint, reused)`, PK
+  `(game, utc_date)`, index `(game, fingerprint)`. See docs/DAILY.md.

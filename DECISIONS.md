@@ -124,3 +124,38 @@ SCOWL lists (via `wordlist-english`) are filtered by
 `scripts/build-wordlists.mjs` into `src/games/words/data/*.json`: answers
 from frequency tiers 10–20 with simple inflections removed, guesses from
 tiers up to 70. Committing them keeps generation reproducible.
+
+## D-020 First-party i18n, keys over the wire (Phase 22)
+A small typed translator (`src/i18n`) instead of a library: dictionaries
+are plain TS objects with English as the typed source of truth and
+fallback. The server sends translatable messages as `{ key, params }`
+(engine feedback, errors, notifications), so stored notifications render
+in the player's current language. Word-game content stays English.
+
+## D-021 Crossclimb follows the clue-ladder concept (supersedes part of D-006)
+Middle rungs are clued and scrambled; the player orders them, then solves
+the clued ends. Ladders are generated only from clued words and rejected if
+any two non-neighbours are one letter apart, so the correct order is unique
+up to reversal (a reversed ladder is accepted, with the ends swapped).
+Answers are validated against the intended word for each clue.
+
+## D-022 Pinpoint is free text with a late assist (supersedes D-007)
+Players type the category, matched against label + aliases with
+normalisation and an OSA edit-distance tolerance. Aliases must never
+collide across categories (tested). To keep the no-fail rule, a
+multiple-choice assist unlocks after the last clue (after 3 on Easy) at a
+score cost.
+
+## D-023 Daily uniqueness via fingerprint history
+See docs/DAILY.md. Deterministic candidate seeds; rejection against
+`daily_puzzle_history`; when exhausted, reuse the least recently used and
+flag it, never a silent repeat.
+
+## D-024 Developer showcase is data, not a special case in the rules
+The showcase writes real rows (ledger XP, streaks, mastery, unlocks with
+xp = 0) for the account named in `DEVELOPER.handle` only, and sets
+`leaderboard_excluded`. Rank is still computed from XP. The brief asked for
+both Elite and Legend; the default is Legend, configurable via `targetXp`.
+
+## D-025 Reset ticker is a Dashboard route layout
+`src/app/dashboard/layout.tsx` renders it, so no other page can show it.

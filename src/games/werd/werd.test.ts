@@ -27,12 +27,12 @@ describe('werd', () => {
   it('rejects non-words, wrong length and repeats without penalty; solves on the answer', () => {
     const puzzle = { length: 5, answer: 'crane', strict: false, parGuesses: 2 };
     let state = werdEngine.initialState(puzzle);
-    expect(werdEngine.act(puzzle, state, { type: 'guess', word: 'zzzzz' }).message).toMatch(/word list/);
-    expect(werdEngine.act(puzzle, state, { type: 'guess', word: 'cat' }).message).toMatch(/5 letters/);
+    expect(werdEngine.act(puzzle, state, { type: 'guess', word: 'zzzzz' }).message?.key).toBe('gameMsg.werd.notWord');
+    expect(werdEngine.act(puzzle, state, { type: 'guess', word: 'cat' }).message?.key).toBe('gameMsg.werd.length');
     let r = werdEngine.act(puzzle, state, { type: 'guess', word: 'Stone' });
     expect(r.solved).toBe(false);
     state = r.state;
-    expect(werdEngine.act(puzzle, state, { type: 'guess', word: 'stone' }).message).toMatch(/Already/);
+    expect(werdEngine.act(puzzle, state, { type: 'guess', word: 'stone' }).message?.key).toBe('gameMsg.werd.repeat');
     r = werdEngine.act(puzzle, state, { type: 'guess', word: 'house' });
     state = r.state;
     r = werdEngine.act(puzzle, state, { type: 'guess', word: 'crane' });

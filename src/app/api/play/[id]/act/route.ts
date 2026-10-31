@@ -8,9 +8,9 @@ const schema = z.object({ action: z.unknown() });
 
 export const POST = route<{ params: Promise<{ id: string }> }>(async (req, { params }) => {
   const { id } = await params;
-  if (!z.string().uuid().safeParse(id).success) throw new HttpError(404, 'Game not found.');
+  if (!z.string().uuid().safeParse(id).success) throw new HttpError(404, 'errors.gameNotFound');
   const user = await currentUser();
-  if (!user) throw new HttpError(401, 'Your session expired. Reload to continue.');
+  if (!user) throw new HttpError(401, 'errors.sessionExpired');
   const { action } = schema.parse(await readJson(req));
   return actOnSession(await getDb(), user.id, id, action, new Date());
 });

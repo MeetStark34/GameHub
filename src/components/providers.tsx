@@ -1,10 +1,11 @@
 'use client';
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Award, Bell, CreditCard, Crown, Flame, Sparkles, TrendingUp, X } from 'lucide-react';
 import type { ThemeId } from '@/config/themes';
 import type { RewardEvent } from '@/lib/contracts';
 import { playSound, type SoundName } from '@/lib/sound';
+import { useI18n } from '@/i18n/client';
 import { AchievementIcon } from './achievement-icon';
 
 /* ------------------------------------------------------------------ prefs */
@@ -45,7 +46,6 @@ interface Toast {
 
 interface ToastApi {
   push: (events: RewardEvent[]) => void;
-  info: (title: string, body?: string) => void;
 }
 
 const ToastContext = createContext<ToastApi | null>(null);
@@ -117,10 +117,9 @@ export function Providers({ children, initialTheme, initialSound, signedIn }: { 
     },
     [dismiss, sound],
   );
-  const info = useCallback((title: string, body = '') => push([{ kind: 'punch', title, body }]), [push]);
 
   const prefs = useMemo(() => ({ theme, setTheme, sound, setSound, play, signedIn }), [theme, setTheme, sound, setSound, play, signedIn]);
-  const toastApi = useMemo(() => ({ push, info }), [push, info]);
+  const toastApi = useMemo(() => ({ push }), [push]);
 
   return (
     <PrefsContext.Provider value={prefs}>
@@ -140,17 +139,20 @@ export function Providers({ children, initialTheme, initialSound, signedIn }: { 
 
 function EventToast({ event, onClose }: { event: RewardEvent; onClose: () => void }) {
   const Icon = EVENT_ICON[event.kind] ?? Bell;
+  const { msg, t } = useI18n();
+  const title = msg(event.i18n?.title, event.title);
+  const body = msg(event.i18n?.body, event.body);
   return (
     <div role="status" className="animate-toast-in pointer-events-auto flex w-full max-w-sm items-start gap-3 rounded-xl border border-border bg-card p-3 shadow-lg shadow-black/10">
       <span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-accent-soft text-accent">
         <Icon className="size-4" aria-hidden />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold">{event.title}</p>
-        {event.body && <p className="text-xs text-muted">{event.body}</p>}
+        <p className="text-sm font-semibold">{title}</p>
+        {body && <p className="text-xs text-muted">{body}</p>}
       </div>
       {event.xp ? <span className="num shrink-0 font-mono text-xs font-bold text-gold">+{event.xp} XP</span> : null}
-      <button onClick={onClose} className="shrink-0 rounded p-0.5 text-muted hover:text-fg" aria-label="Dismiss notification">
+      <button onClick={onClose} className="shrink-0 rounded p-0.5 text-muted hover:text-fg" aria-label={t('common.dismiss')}>
         <X className="size-3.5" />
       </button>
     </div>
@@ -159,10 +161,13 @@ function EventToast({ event, onClose }: { event: RewardEvent; onClose: () => voi
 
 function AchievementToast({ event, onClose }: { event: RewardEvent; onClose: () => void }) {
   const icon = (event.data?.icon as string) ?? 'Award';
+  const { msg, t } = useI18n();
+  const title = msg(event.i18n?.title, event.title);
+  const body = msg(event.i18n?.body, event.body);
   return (
     <div
       role="status"
-      aria-label={`Achievement unlocked: ${event.title}`}
+      aria-label={t('achievements.toastLabel', { name: title })}
       className="animate-toast-in pointer-events-auto relative w-full max-w-sm overflow-hidden rounded-2xl border border-gold/40 bg-card shadow-xl shadow-black/20"
     >
       <span aria-hidden className="animate-shine absolute inset-y-0 left-0 w-1/3 bg-gradient-to-r from-transparent via-gold/25 to-transparent" />
@@ -171,12 +176,12 @@ function AchievementToast({ event, onClose }: { event: RewardEvent; onClose: () 
           <AchievementIcon name={icon} className="size-6" />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-gold">Achievement unlocked</p>
-          <p className="truncate font-display text-base font-bold">{event.title}</p>
-          <p className="line-clamp-2 text-xs text-muted">{event.body}</p>
+          <p className="font-mono text-[10px] font-bold uppercase tracking-[0.2em] text-gold">{t('achievements.toastTitle')}</p>
+          <p className="truncate font-display text-base font-bold">{title}</p>
+          <p className="line-clamp-2 text-xs text-muted">{body}</p>
         </div>
         <span className="num shrink-0 self-start font-mono text-xs font-bold text-gold">+{event.xp} XP</span>
-        <button onClick={onClose} className="absolute right-1.5 top-1.5 rounded p-0.5 text-muted hover:text-fg" aria-label="Dismiss achievement">
+        <button onClick={onClose} className="absolute right-1.5 top-1.5 rounded p-0.5 text-muted hover:text-fg" aria-label={t('common.dismiss')}>
           <X className="size-3.5" />
         </button>
       </div>
@@ -184,11 +189,3 @@ function AchievementToast({ event, onClose }: { event: RewardEvent; onClose: () 
   );
 }
 
-/** Applies a theme chosen elsewhere (e.g. server preference) once on mount. */
-export function useSyncedTheme(serverTheme: ThemeId | null) {
-  const { theme, setTheme } = usePrefs();
-  useEffect(() => {
-    if (serverTheme && serverTheme !== theme) setTheme(serverTheme);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [serverTheme]);
-}

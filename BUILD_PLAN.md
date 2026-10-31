@@ -86,3 +86,18 @@
 ## PHASE 21 Production deployment
 [ ] 21.01 Supabase project + migrations applied
 [ ] 21.02 Vercel deploy + env vars + live smoke test
+
+## PHASE 22 Post-testing refinement & personalization
+[x] 22.01 Languages EN/FR/HI/RU: central dictionaries, selector, persistence, tests
+[x] 22.02 Crossclimb rebuilt (clued rungs, reorder, unlock ends), 380+ clues
+[x] 22.03 Pinpoint rebuilt (free-text, typo tolerance, assist), 177 categories
+[x] 22.04 Daily Tango 6×6
+[x] 22.05 Daily uniqueness: fingerprints + history + flagged fallback
+[x] 22.06 Ticker on Dashboard only
+[x] 22.07 Footer credit (configurable profile link)
+[x] 22.08 Header Themes and Language controls
+[~] 22.09–11 Mr. Stark showcase + leaderboard exclusion (code done; account must be created, see AI_HANDOFF)
+[x] 22.12 Rank Roadmap page
+[x] 22.13 XP economy file documented
+[x] 22.14 Developer/admin dashboard
+[ ] 22.15 Supabase connected (password rejected; waiting on a reset password)

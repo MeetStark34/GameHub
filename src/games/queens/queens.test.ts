@@ -25,10 +25,10 @@ describe('queens', () => {
   it('rejects wrong counts, duplicate rows and touching crowns', () => {
     const { puzzle, solution } = queensEngine.generate(createRng('rej'), 'normal');
     const cells = solutionToCells(solution);
-    expect(checkQueens(puzzle, cells.slice(1))).toMatch(/exactly/);
+    expect(checkQueens(puzzle, cells.slice(1))).toMatchObject({ key: 'gameMsg.queens.count' });
     const dupRow = cells.map(([r, c], i) => (i === 1 ? [0, c] : [r, c]) as [number, number]);
     expect(checkQueens(puzzle, dupRow)).not.toBeNull();
-    expect(checkQueens({ size: 2, regions: [[0, 0], [1, 1]] }, [[0, 0], [1, 1]])).toMatch(/touching/);
+    expect(checkQueens({ size: 2, regions: [[0, 0], [1, 1]] }, [[0, 0], [1, 1]])).toMatchObject({ key: 'gameMsg.queens.touching' });
   });
 
   it('act(): wrong submit costs score, malformed input is rejected, right submit solves', () => {

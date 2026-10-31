@@ -16,17 +16,16 @@ time ≤ par. Each wrong submission in a logic game costs 0.1 (max 0.5).
 | **Mini Sudoku** | Rows, columns and boxes contain each number once | Random full grid, then dig holes keeping a unique solution | 4×4 (+2 givens) | 6×6 (+6 above minimal) | 6×6 (+2) | 6×6 minimal |
 | **Zip** | One path through every cell, numbers in order, start at 1, end at the last number, no walls crossed | Random Hamiltonian path (backbite moves), waypoints along it, walls on unused edges | 5×5, 9 numbers | 6×6, 8 numbers, 3 walls | 7×7, 7 numbers, 5 walls | 8×8, 6 numbers, 6 walls |
 | **Werd** | Guess the hidden word; hit/near/miss feedback; no guess limit | Random common word | 4 letters | 5 letters | 6 letters | 6 letters, strict mode |
-| **Pinpoint** | Clues revealed one at a time; pick the shared category; a wrong pick reveals a clue | Category bank (`categories.ts`, 62 categories × 8 clues ordered by ambiguity) | 4 options, clear clues | 6 options | 6 same-family options | 8 same-family options, cryptic clues |
-| **Crossclimb** | Fill the rungs between top and bottom; each step changes exactly one letter; all real words | BFS over common-word one-letter graph; pair rejected if any dictionary word gives a shorter route | 3 letters, 2 rungs, all hints | 4 letters, 3 rungs, 50% hints | 4 letters, 4 rungs | 5 letters, 4 rungs |
-| **Tango** | Sun/moon in every cell; rows and columns balanced; never three in a row; `=` same, `×` opposite | Random valid grid, then strip cell and edge clues while unique | 6×6 (+6 clues) | 6×6 (+1) | 8×8 (+4) | 8×8 minimal |
+| **Pinpoint** | Clues revealed one at a time; type the shared category (aliases, plurals and typos accepted); a wrong guess reveals a clue; choices unlock after the last clue at a score cost | Category bank (`categories/*.ts`, 177 categories × 8 clues ordered by ambiguity) | clear clues, choices after 3 | fair clues | tricky clues, look-alike choices | cryptic clues, 8 look-alike choices |
+| **Crossclimb** | Solve each clued rung (4-letter words), reorder them so neighbours differ by one letter, then solve the clued top and bottom words | Random simple path in the one-letter graph of clued words, rejected if any non-neighbours are one letter apart (unique order) | 3 rungs, first letters | 4 rungs, first letters | 5 rungs | 6 rungs |
+| **Tango** | Sun/moon in every cell; rows and columns balanced; never three in a row; `=` same, `×` opposite | Random valid grid, then strip cell and edge clues while unique | 6×6 (+6 clues) | 6×6 (+1) | 8×8 (+4); Daily 6×6 (+1) | 8×8 minimal; Daily 6×6 minimal |
 | **Queens** | One crown per row, column and colour region; crowns never touch | Random non-touching placement, regions grown from crowns, kept only if unique | 6×6 | 7×7 | 8×8 | 9×9 |
 
 Secrets: Werd answers and Pinpoint answer ids never reach the browser
 (`toClient` strips them; tests assert this). Logic games' solutions are
 derivable from the puzzle anyway, so validation is rule-based.
 
-Penalties: Werd loses 0.08 per guess beyond par 6 (max 0.6). Pinpoint loses
-0.1 per extra clue plus 0.08 per wrong pick (max 0.8).
+Crossclimb loses 0.1 per wrong check (max 0.6). Pinpoint loses 0.1 per extra clue, 0.03 per wrong guess, 0.25 for the assist and 0.08 per wrong pick (max 0.85). Werd loses 0.08 per guess beyond par 6 (max 0.6).
 
 Highlights for achievements: `werd:first-guess`, `pinpoint:one-clue`.
 

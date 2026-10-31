@@ -14,7 +14,14 @@ export function StreakNudge({ date, streak }: { date: string; streak: number }) 
     } catch {
       return;
     }
-    push([{ kind: 'streak-milestone', title: 'Streak at risk', body: `Play one Daily Set game before 00:00 UTC to keep your ${streak}-day streak.` }]);
+    push([
+      {
+        kind: 'streak-milestone',
+        title: 'Streak at risk',
+        body: '',
+        i18n: { title: { key: 'streak.atRiskTitle' }, body: { key: 'streak.atRiskBody', params: { count: streak } } },
+      },
+    ]);
   }, [date, streak, push]);
   return null;
 }

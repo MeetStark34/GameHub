@@ -1,16 +1,21 @@
 import type { Difficulty } from '../types';
-import type { WordLength } from '../words/dictionary';
 
 export interface CrossclimbDifficulty {
-  length: WordLength;
+  /** Clued middle rungs shown scrambled (the ladder has 2 more words). */
   rungs: number;
-  /** Probability each step shows which letter changes. */
-  hintRate: number;
+  /** Show the first letter of each middle answer. */
+  firstLetterHints: boolean;
 }
 
+/** All Crossclimb words are 4 letters (see clues.ts). */
+export const CROSSCLIMB_WORD_LENGTH = 4;
+
 export const CROSSCLIMB_CONFIG: Record<Difficulty, CrossclimbDifficulty> = {
-  easy: { length: 3, rungs: 2, hintRate: 1 },
-  normal: { length: 4, rungs: 3, hintRate: 0.5 },
-  hard: { length: 4, rungs: 4, hintRate: 0 },
-  expert: { length: 5, rungs: 4, hintRate: 0 },
+  easy: { rungs: 3, firstLetterHints: true },
+  normal: { rungs: 4, firstLetterHints: true },
+  hard: { rungs: 5, firstLetterHints: false },
+  expert: { rungs: 6, firstLetterHints: false },
 };
+
+/** Score lost per wrong check, and the cap. */
+export const CROSSCLIMB_PENALTY = { perMistake: 0.1, max: 0.6 };

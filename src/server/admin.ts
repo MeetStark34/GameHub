@@ -11,7 +11,8 @@ import { ENGINES } from '@/games/registry';
 import { DIFFICULTIES, GAME_IDS } from '@/games/types';
 import { actOnSession, PlayError, startSession } from './play';
 import { awardXp, ensureStats, evaluateAchievements, loadStreak, notify, saveStreak } from './progress';
-import { winningActionFor } from './solutions';
+import { winningActionsFor } from './solutions';
+import { applyDeveloperShowcase } from './developer';
 
 export const BADGES = ['developer', 'moderator', 'tester', 'founder', 'contributor'] as const;
 export const ROLES = ['admin', 'moderator'] as const;
@@ -38,6 +39,8 @@ export const adminActionSchema = z.discriminatedUnion('action', [
   z.object({ action: z.literal('reset-daily-state'), userId: uuid }),
   z.object({ action: z.literal('set-badge'), userId: uuid, badge: z.enum(BADGES), on: z.boolean() }),
   z.object({ action: z.literal('set-role'), userId: uuid, role: z.enum(ROLES), on: z.boolean() }),
+  z.object({ action: z.literal('set-leaderboard-excluded'), userId: uuid, on: z.boolean() }),
+  z.object({ action: z.literal('apply-developer-showcase') }),
   z.object({
     action: z.literal('generate-puzzle'),
     game: z.enum(GAME_IDS),
@@ -88,9 +91,14 @@ export async function runAdminAction(db: Db, actorId: string, input: AdminAction
         if (view.status === 'completed') continue;
         // Back-date the start so the plausibility floor does not block the tool.
         await db.query(`update game_sessions set started_at = $2::timestamptz where id = $1`, [view.id, new Date(now.getTime() - 5 * 60_000).toISOString()]);
-        const { solution } = await one<{ solution: unknown }>(db, 'select p.solution from game_sessions s join puzzles p on p.id = s.puzzle_id where s.id = $1', [view.id]);
-        const r = await actOnSession(db, input.userId, view.id, winningActionFor(game, solution), now);
-        if (r.solved) completed++;
+        const { solution, data } = await one<{ solution: unknown; data: unknown }>(
+          db,
+          'select p.solution, p.data from game_sessions s join puzzles p on p.id = s.puzzle_id where s.id = $1',
+          [view.id],
+        );
+        let solved = false;
+        for (const action of winningActionsFor(game, solution, data)) solved = (await actOnSession(db, input.userId, view.id, action, now)).solved;
+        if (solved) completed++;
       }
       result = { completed };
       break;
@@ -139,6 +147,12 @@ export async function runAdminAction(db: Db, actorId: string, input: AdminAction
         await db.query('insert into user_roles (user_id, role, granted_by) values ($1, $2, $3) on conflict do nothing', [input.userId, input.role, actorId]);
       else await db.query('delete from user_roles where user_id = $1 and role = $2', [input.userId, input.role]);
       break;
+    case 'set-leaderboard-excluded':
+      await db.query('update users set leaderboard_excluded = $2 where id = $1', [input.userId, input.on]);
+      break;
+    case 'apply-developer-showcase':
+      result = await applyDeveloperShowcase(db, now);
+      break;
     case 'generate-puzzle': {
       const seed = input.seed || `admin-preview:${randomUUID()}`;
       const { puzzle, solution } = ENGINES[input.game].generate(createRng(seed), input.difficulty);
@@ -166,8 +180,8 @@ export async function adminOverview(db: Queryable, now: Date) {
 
 export async function adminSearchUsers(db: Queryable, q: string) {
   const term = `%${q.trim().toLowerCase().replace(/[%_]/g, '')}%`;
-  return db.query<{ id: string; handle: string; display_name: string; email: string | null; is_guest: boolean; total_xp: number | null; roles: string[]; badges: string[] }>(
-    `select u.id, u.handle, u.display_name, u.email, u.is_guest, st.total_xp,
+  return db.query<{ id: string; handle: string; display_name: string; email: string | null; is_guest: boolean; total_xp: number | null; roles: string[]; badges: string[]; leaderboard_excluded: boolean }>(
+    `select u.id, u.handle, u.display_name, u.email, u.is_guest, st.total_xp, u.leaderboard_excluded,
        coalesce((select array_agg(role) from user_roles r where r.user_id = u.id), '{}') roles,
        coalesce((select array_agg(badge) from user_badges b where b.user_id = u.id), '{}') badges
      from users u left join user_stats st on st.user_id = u.id
