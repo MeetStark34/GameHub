@@ -14,7 +14,7 @@ const SIZES = { sm: 'h-8 px-3 text-sm gap-1.5', md: 'h-10 px-4 text-sm gap-2', l
 
 export function buttonClass(variant: Variant = 'primary', size: keyof typeof SIZES = 'md', extra?: string) {
   return cn(
-    'inline-flex select-none items-center justify-center rounded-xl font-semibold transition disabled:pointer-events-none disabled:opacity-50',
+    'inline-flex select-none items-center whitespace-nowrap justify-center rounded-xl font-semibold transition disabled:pointer-events-none disabled:opacity-50',
     VARIANTS[variant],
     SIZES[size],
     extra,

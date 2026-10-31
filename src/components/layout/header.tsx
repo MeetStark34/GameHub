@@ -57,9 +57,11 @@ export function Header({ user }: { user: HeaderUser | null }) {
               <Link href="/login" className={buttonClass('ghost', 'sm')}>
                 Sign in
               </Link>
-              <Link href="/signup" className={buttonClass('primary', 'sm', 'hidden sm:inline-flex')}>
-                {user?.isGuest ? 'Save progress' : 'Create account'}
-              </Link>
+              <span className="hidden sm:block">
+                <Link href="/signup" className={buttonClass('primary', 'sm')}>
+                  {user?.isGuest ? 'Save progress' : 'Create account'}
+                </Link>
+              </span>
             </>
           )}
         </div>

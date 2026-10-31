@@ -15,8 +15,10 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "db:migrate": "node --experimental-strip-types scripts/migrate.ts",
-    "admin:grant": "node --experimental-strip-types scripts/grant-role.ts"
+    "db:migrate": "node scripts/migrate.ts",
+    "admin:grant": "node scripts/grant-role.ts",
+    "words:build": "node scripts/build-wordlists.mjs",
+    "check": "npm run lint && npm run typecheck && npm test"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.13",
