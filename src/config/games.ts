@@ -1,184 +1,202 @@
-export type GameId =
-  | 'patches'
-  | 'sudoku'
-  | 'zip'
-  | 'werd'
-  | 'pinpoint'
-  | 'crossclimb'
-  | 'tango'
-  | 'queens';
+import type { Difficulty, GameId } from '@/games/types';
 
-export type GameDifficulty = 'easy' | 'normal' | 'hard' | 'expert';
-
-export interface GameDefinition {
+/**
+ * Client-safe game metadata. Gameplay rules live in each game's module;
+ * this file holds presentation copy and the timing values used by scoring
+ * and anti-cheat. All times are in seconds.
+ */
+export interface GameMeta {
   id: GameId;
   name: string;
   tagline: string;
-  description: string;
-  threeLinePunch: [string, string, string];
-  icon: string; // Lucide icon key name
-  accentColor: string; // Hex for game badge & border
-  secondaryColor: string;
-  order: number;
-  instructions: string;
-  difficulties: GameDifficulty[];
-  defaultDifficulty: GameDifficulty;
-  avgDurationSec: number;
+  /** Short how-to-play bullets shown before and during play. */
+  rules: string[];
+  /** CSS variable holding this game's accent colour (see globals.css). */
+  accentVar: string;
+  /** Completing at or under par keeps the full time score. */
+  parSeconds: Record<Difficulty, number>;
+  /**
+   * Completions faster than this are rejected as implausible. Kept far
+   * below what a strong player can achieve so it never blocks real play.
+   */
+  minSeconds: Record<Difficulty, number>;
+  /** Short description of what each difficulty changes. */
+  difficultyNotes: Record<Difficulty, string>;
 }
 
-export const GAMES: Record<GameId, GameDefinition> = {
+export const GAMES: Record<GameId, GameMeta> = {
   patches: {
     id: 'patches',
     name: 'Patches',
-    tagline: 'Quilt the grid with perfect geometric harmony',
-    description: 'Assemble distinct patterned polyomino patches to completely tile the board without overlaps.',
-    threeLinePunch: [
-      'Shape the board.',
-      'Find the pattern.',
-      'Master the grid.',
+    tagline: 'Stitch the board into perfect rectangles.',
+    rules: [
+      'Drag to cut the board into rectangles.',
+      'Every rectangle holds exactly one number, equal to its area.',
+      'A shape hint (square, wide, tall) must be respected.',
     ],
-    icon: 'Grid3X3',
-    accentColor: '#38bdf8', // Sky
-    secondaryColor: '#0284c7',
-    order: 1,
-    instructions: 'Place all provided patch pieces onto the grid so that no two overlap and the entire area is covered.',
-    difficulties: ['easy', 'normal', 'hard', 'expert'],
-    defaultDifficulty: 'normal',
-    avgDurationSec: 150,
+    accentVar: '--game-patches',
+    parSeconds: { easy: 60, normal: 120, hard: 210, expert: 360 },
+    minSeconds: { easy: 3, normal: 5, hard: 7, expert: 9 },
+    difficultyNotes: {
+      easy: '5×5, every shape shown',
+      normal: '6×6, most shapes shown',
+      hard: '7×7, few shapes shown',
+      expert: '8×8, no shape hints',
+    },
   },
   sudoku: {
     id: 'sudoku',
     name: 'Mini Sudoku',
-    tagline: 'Concentrated pure logical deduction',
-    description: 'A rapid 6x6 numerical matrix challenge with row, column, and box constraints.',
-    threeLinePunch: [
-      'Deduce the digits.',
-      'Break the gridlock.',
-      'Zero guesswork.',
+    tagline: 'Small grid, sharp logic.',
+    rules: [
+      'Fill every row, column and box with each number once.',
+      'Pre-filled numbers stay put.',
+      'Repeated numbers are highlighted as you go.',
     ],
-    icon: 'Hash',
-    accentColor: '#fbbf24', // Amber
-    secondaryColor: '#d97706',
-    order: 2,
-    instructions: 'Fill the 6x6 grid with digits 1 through 6 such that every row, column, and 2x3 box contains each digit exactly once.',
-    difficulties: ['easy', 'normal', 'hard', 'expert'],
-    defaultDifficulty: 'normal',
-    avgDurationSec: 180,
+    accentVar: '--game-sudoku',
+    parSeconds: { easy: 45, normal: 120, hard: 180, expert: 300 },
+    minSeconds: { easy: 3, normal: 6, hard: 8, expert: 10 },
+    difficultyNotes: {
+      easy: '4×4 warm-up',
+      normal: '6×6 with generous givens',
+      hard: '6×6 with few givens',
+      expert: '6×6, minimal givens',
+    },
   },
   zip: {
     id: 'zip',
     name: 'Zip',
-    tagline: 'Connect the pathway through numbers in sequence',
-    description: 'Trace a single unbroken circuit linking numbers in rising numerical order from 1 to the finish.',
-    threeLinePunch: [
-      'Trace the path.',
-      'Connect the flow.',
-      'Zip to the end.',
+    tagline: 'One line. Every cell. In order.',
+    rules: [
+      'Start on 1 and draw a single path through every cell.',
+      'Pass the numbers in order and finish on the last one.',
+      'Paths cannot cross walls or themselves.',
     ],
-    icon: 'Route',
-    accentColor: '#34d399', // Emerald
-    secondaryColor: '#059669',
-    order: 3,
-    instructions: 'Connect the sequential numbered nodes through adjacent cells without crossing or leaving gaps.',
-    difficulties: ['easy', 'normal', 'hard', 'expert'],
-    defaultDifficulty: 'normal',
-    avgDurationSec: 120,
+    accentVar: '--game-zip',
+    parSeconds: { easy: 40, normal: 75, hard: 120, expert: 180 },
+    minSeconds: { easy: 3, normal: 5, hard: 7, expert: 9 },
+    difficultyNotes: {
+      easy: '5×5, many waypoints',
+      normal: '6×6 with walls',
+      hard: '7×7, fewer waypoints',
+      expert: '8×8, sparse waypoints',
+    },
   },
   werd: {
     id: 'werd',
     name: 'Werd',
-    tagline: 'Crack the hidden word in six tries or fewer',
-    description: 'GameHub’s crisp dictionary challenge with colored positional hints.',
-    threeLinePunch: [
-      'Choose your letters.',
-      'Interpret the clues.',
-      'Solve the word.',
+    tagline: 'Crack the hidden word. No guess limit.',
+    rules: [
+      'Guess the hidden word; every guess must be a real word.',
+      'Green: right letter, right spot. Amber: in the word elsewhere.',
+      'There is no guess limit, but fewer guesses score higher.',
     ],
-    icon: 'FileText',
-    accentColor: '#a78bfa', // Purple
-    secondaryColor: '#7c3aed',
-    order: 4,
-    instructions: 'Guess the hidden 5-letter word. Green means correct spot, yellow means in word but wrong spot, gray means absent.',
-    difficulties: ['easy', 'normal', 'hard', 'expert'],
-    defaultDifficulty: 'normal',
-    avgDurationSec: 90,
+    accentVar: '--game-werd',
+    parSeconds: { easy: 90, normal: 120, hard: 150, expert: 180 },
+    minSeconds: { easy: 1, normal: 1, hard: 1, expert: 1 },
+    difficultyNotes: {
+      easy: '4 letters',
+      normal: '5 letters',
+      hard: '6 letters',
+      expert: '6 letters, strict mode',
+    },
   },
   pinpoint: {
     id: 'pinpoint',
     name: 'Pinpoint',
-    tagline: 'Spot the overarching connection among clues',
-    description: 'Given four enigmatic clue words, pinpoint the single uniting theme that ties them together.',
-    threeLinePunch: [
-      'Read the clues.',
-      'Isolate the link.',
-      'Pinpoint the concept.',
+    tagline: 'Find the thread that ties the clues together.',
+    rules: [
+      'Clues appear one at a time. Pick the category they share.',
+      'A wrong pick rules that category out and reveals another clue.',
+      'Fewer clues and fewer wrong picks score higher.',
     ],
-    icon: 'Crosshair',
-    accentColor: '#f43f5e', // Rose
-    secondaryColor: '#e11d48',
-    order: 5,
-    instructions: 'Examine the clues revealed one by one and guess the category or secret link connecting all four.',
-    difficulties: ['easy', 'normal', 'hard', 'expert'],
-    defaultDifficulty: 'normal',
-    avgDurationSec: 60,
+    accentVar: '--game-pinpoint',
+    parSeconds: { easy: 30, normal: 45, hard: 60, expert: 90 },
+    minSeconds: { easy: 1, normal: 1, hard: 1, expert: 1 },
+    difficultyNotes: {
+      easy: '4 categories, clear clues',
+      normal: '6 categories',
+      hard: '6 look-alike categories',
+      expert: '8 look-alike categories, cryptic clues',
+    },
   },
   crossclimb: {
     id: 'crossclimb',
     name: 'Crossclimb',
-    tagline: 'Ascend the trivia ladder one letter change at a time',
-    description: 'Solve trivia word clues and arrange the ladder so that adjacent words differ by exactly one letter.',
-    threeLinePunch: [
-      'Answer the clues.',
-      'Morph the letters.',
-      'Climb to the top.',
+    tagline: 'Climb from one word to another, a letter at a time.',
+    rules: [
+      'Fill each rung with a real word.',
+      'Each word changes exactly one letter from the word above.',
+      'Reach the bottom word using exactly the rungs given.',
     ],
-    icon: 'TrendingUp',
-    accentColor: '#f97316', // Orange
-    secondaryColor: '#ea580c',
-    order: 6,
-    instructions: 'Answer the crossword clues and arrange the words into a valid ladder where consecutive rungs differ by one character.',
-    difficulties: ['easy', 'normal', 'hard', 'expert'],
-    defaultDifficulty: 'normal',
-    avgDurationSec: 210,
+    accentVar: '--game-crossclimb',
+    parSeconds: { easy: 60, normal: 120, hard: 180, expert: 240 },
+    minSeconds: { easy: 3, normal: 4, hard: 5, expert: 6 },
+    difficultyNotes: {
+      easy: '3-letter words, every step hinted',
+      normal: '4-letter words, some hints',
+      hard: '4-letter words, longer climb',
+      expert: '5-letter words, no hints',
+    },
   },
   tango: {
     id: 'tango',
     name: 'Tango',
-    tagline: 'Balance suns and moons in binary perfection',
-    description: 'A 6x6 binary deduction puzzle with balance rules and no three consecutive identical symbols.',
-    threeLinePunch: [
-      'Sun and Moon.',
-      'Equal count.',
-      'Never three in a row.',
+    tagline: 'Balance sun and moon across the grid.',
+    rules: [
+      'Fill every cell with a sun or a moon.',
+      'Each row and column has equal suns and moons; never three in a row.',
+      '= joins matching cells, × joins opposite cells.',
     ],
-    icon: 'SunMoon',
-    accentColor: '#38bdf8', // Cyan / Light Blue
-    secondaryColor: '#0ea5e9',
-    order: 7,
-    instructions: 'Fill each row and column with equal numbers of suns and moons. No three of the same symbol can be adjacent horizontally or vertically.',
-    difficulties: ['easy', 'normal', 'hard', 'expert'],
-    defaultDifficulty: 'normal',
-    avgDurationSec: 150,
+    accentVar: '--game-tango',
+    parSeconds: { easy: 60, normal: 120, hard: 180, expert: 300 },
+    minSeconds: { easy: 3, normal: 5, hard: 8, expert: 10 },
+    difficultyNotes: {
+      easy: '6×6 with extra clues',
+      normal: '6×6',
+      hard: '8×8 with extra clues',
+      expert: '8×8, minimal clues',
+    },
   },
   queens: {
     id: 'queens',
     name: 'Queens',
-    tagline: 'Place crowns with flawless spatial strategy',
-    description: 'Position one royal queen in each row, column, and colored region without adjacent touches.',
-    threeLinePunch: [
-      'Claim your realm.',
-      'Protect the crowns.',
-      'Rule the board.',
+    tagline: 'One crown per row, column and colour.',
+    rules: [
+      'Place one crown in every row, column and colour region.',
+      'Crowns may never touch, not even diagonally.',
+      'Tap once to mark ×, twice to place a crown.',
     ],
-    icon: 'Crown',
-    accentColor: '#eab308', // Gold
-    secondaryColor: '#ca8a04',
-    order: 8,
-    instructions: 'Place exactly one Queen in every row, every column, and each color-coded territory. Queens may never touch—even diagonally.',
-    difficulties: ['easy', 'normal', 'hard', 'expert'],
-    defaultDifficulty: 'normal',
-    avgDurationSec: 240,
+    accentVar: '--game-queens',
+    parSeconds: { easy: 60, normal: 120, hard: 180, expert: 300 },
+    minSeconds: { easy: 3, normal: 5, hard: 7, expert: 9 },
+    difficultyNotes: {
+      easy: '6×6',
+      normal: '7×7',
+      hard: '8×8',
+      expert: '9×9',
+    },
   },
 };
 
-export const GAME_LIST: GameDefinition[] = Object.values(GAMES).sort((a, b) => a.order - b.order);
+export const DIFFICULTY_LABELS: Record<Difficulty, string> = {
+  easy: 'Easy',
+  normal: 'Normal',
+  hard: 'Hard',
+  expert: 'Expert',
+};
+
+/**
+ * Daily Set difficulty by UTC weekday (0 = Sunday). The whole set shares one
+ * difficulty so the day has a consistent feel: gentle early week, a stiff
+ * Sunday.
+ */
+export const DAILY_DIFFICULTY_BY_WEEKDAY: Record<number, Difficulty> = {
+  0: 'expert',
+  1: 'easy',
+  2: 'normal',
+  3: 'normal',
+  4: 'normal',
+  5: 'hard',
+  6: 'hard',
+};
