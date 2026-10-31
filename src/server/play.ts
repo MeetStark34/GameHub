@@ -19,9 +19,9 @@ import {
   evaluateAchievements,
   grantPunch,
   notify,
-  type RewardEvent,
-  type UnlockedAchievement,
 } from './progress';
+import type { ActResponse, CompletionResult, RewardEvent, SessionView } from '@/lib/contracts';
+export type { CompletionResult, SessionView } from '@/lib/contracts';
 import { REPAIR_CARDS, XP_ECONOMY } from '@/config/economy';
 
 export class PlayError extends Error {
@@ -93,38 +93,6 @@ interface SessionRow {
   completed_at: Date | null;
   data: unknown;
   result: CompletionResult | null;
-}
-
-export interface SessionView {
-  id: string;
-  game: GameId;
-  difficulty: Difficulty;
-  mode: GameMode;
-  dailyDate: string | null;
-  status: 'active' | 'completed';
-  puzzle: unknown;
-  startedAt: string;
-  serverNow: string;
-  completion: CompletionResult | null;
-}
-
-export interface CompletionResult {
-  sessionId: string;
-  game: GameId;
-  difficulty: Difficulty;
-  mode: GameMode;
-  durationMs: number;
-  score: number;
-  perfect: boolean;
-  xpGained: number;
-  breakdown: { label: string; amount: number }[];
-  totalXp: number;
-  rank: { before: string; after: string; levelUp: boolean; progress: number; nextLabel: string | null };
-  mastery: { before: string; after: string; xp: number; rankUp: boolean };
-  streaks: { normal: number; truePlayer: number; normalAdvanced: boolean; truePlayerAdvanced: boolean };
-  daily: { date: string; completed: number; total: number; setComplete: boolean } | null;
-  achievements: UnlockedAchievement[];
-  events: RewardEvent[];
 }
 
 const SESSION_SELECT = `select s.*, p.data, c.result from game_sessions s
@@ -222,13 +190,7 @@ export async function startSession(db: Db, input: StartInput): Promise<SessionVi
   return getSession(db, userId, id, now);
 }
 
-export interface ActOutcome {
-  view: SessionView;
-  solved: boolean;
-  message?: string;
-  feedback?: unknown;
-  completion: CompletionResult | null;
-}
+export type ActOutcome = ActResponse;
 
 /** Deadline for completing a Daily Set game of `date`. */
 export const dailyDeadline = (date: UtcDate) => new Date(parseUtcDate(addDays(date, 1)).getTime() + DAILY_GRACE_MINUTES * 60_000);

@@ -1,0 +1,226 @@
+@import 'tailwindcss';
+
+/*
+ * GameHub design tokens. Components use ONLY these tokens (via the Tailwind
+ * colour names mapped in @theme below), so every theme restyles the whole
+ * app, including game boards.
+ */
+
+@custom-variant dark (&:where([data-scheme='dark'], [data-scheme='dark'] *));
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-fg: var(--fg);
+  --color-card: var(--card);
+  --color-elevated: var(--elevated);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-subtle: var(--subtle);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: color-mix(in oklab, var(--accent) 16%, var(--card));
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-gold: var(--gold);
+  --color-cell: var(--cell);
+  --color-cell-line: var(--cell-line);
+  --color-surface: var(--game-surface);
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display), var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+:root,
+[data-theme='system'] {
+  --bg: #f5f4ef;
+  --fg: #16171b;
+  --card: #ffffff;
+  --elevated: #eeede7;
+  --border: #e1dfd7;
+  --muted: #64666e;
+  --subtle: #ebe9e2;
+  --accent: #4353d6;
+  --accent-fg: #ffffff;
+  --success: #17895a;
+  --warning: #b97a06;
+  --danger: #c93b32;
+  --gold: #b88a12;
+  --game-surface: #ffffff;
+  --cell: #fbfaf6;
+  --cell-line: #d6d3c9;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  [data-theme='system'] {
+    --bg: #111216;
+    --fg: #ececee;
+    --card: #1a1b21;
+    --elevated: #23252c;
+    --border: #2d2f37;
+    --muted: #9a9ca6;
+    --subtle: #22242a;
+    --accent: #7383ff;
+    --accent-fg: #0d0e12;
+    --success: #3ccf8e;
+    --warning: #f1b43c;
+    --danger: #ff6b5f;
+    --gold: #e6bc45;
+    --game-surface: #17181d;
+    --cell: #1f2026;
+    --cell-line: #34363f;
+    color-scheme: dark;
+  }
+}
+
+[data-theme='dracula'] {
+  --bg: #21222c; --fg: #f8f8f2; --card: #282a36; --elevated: #343746; --border: #3d4053; --muted: #a0a8cd;
+  --subtle: #303241; --accent: #bd93f9; --accent-fg: #1b1c25; --success: #50fa7b; --warning: #ffb86c; --danger: #ff5555;
+  --gold: #f1fa8c; --game-surface: #282a36; --cell: #303241; --cell-line: #44475a; color-scheme: dark;
+}
+[data-theme='nord'] {
+  --bg: #242933; --fg: #eceff4; --card: #2e3440; --elevated: #3b4252; --border: #434c5e; --muted: #a8b1c2;
+  --subtle: #353c4a; --accent: #88c0d0; --accent-fg: #1d222b; --success: #a3be8c; --warning: #ebcb8b; --danger: #bf616a;
+  --gold: #ebcb8b; --game-surface: #2e3440; --cell: #353c4a; --cell-line: #4c566a; color-scheme: dark;
+}
+[data-theme='gruvbox'] {
+  --bg: #1d2021; --fg: #ebdbb2; --card: #282828; --elevated: #32302f; --border: #3c3836; --muted: #a89984;
+  --subtle: #32302f; --accent: #fabd2f; --accent-fg: #1d2021; --success: #b8bb26; --warning: #fe8019; --danger: #fb4934;
+  --gold: #fabd2f; --game-surface: #282828; --cell: #32302f; --cell-line: #504945; color-scheme: dark;
+}
+[data-theme='one-dark'] {
+  --bg: #21252b; --fg: #d7dae0; --card: #282c34; --elevated: #2f343e; --border: #3a3f4b; --muted: #9da5b4;
+  --subtle: #2c313a; --accent: #61afef; --accent-fg: #1b1e23; --success: #98c379; --warning: #e5c07b; --danger: #e06c75;
+  --gold: #e5c07b; --game-surface: #282c34; --cell: #2f343e; --cell-line: #3e4451; color-scheme: dark;
+}
+[data-theme='solarized'] {
+  --bg: #fdf6e3; --fg: #3c4a4f; --card: #fffbf0; --elevated: #eee8d5; --border: #e4dcc3; --muted: #657b83;
+  --subtle: #f2ecd9; --accent: #268bd2; --accent-fg: #fdf6e3; --success: #5f7f00; --warning: #b58900; --danger: #dc322f;
+  --gold: #b58900; --game-surface: #fffbf0; --cell: #fdf6e3; --cell-line: #d9cfb2; color-scheme: light;
+}
+[data-theme='cyberpunk'] {
+  --bg: #0b0118; --fg: #f3f0ff; --card: #140527; --elevated: #1e0b36; --border: #33175a; --muted: #b0a2d6;
+  --subtle: #1a0830; --accent: #ff2a6d; --accent-fg: #0b0118; --success: #05ffa1; --warning: #f5d300; --danger: #ff3864;
+  --gold: #f5d300; --game-surface: #140527; --cell: #1c0a33; --cell-line: #3b1d66; color-scheme: dark;
+}
+[data-theme='oled'] {
+  --bg: #000000; --fg: #f2f2f2; --card: #0b0b0b; --elevated: #151515; --border: #232323; --muted: #9b9b9b;
+  --subtle: #111111; --accent: #3d8bff; --accent-fg: #000000; --success: #2fd47d; --warning: #ffb020; --danger: #ff4d4d;
+  --gold: #f0c040; --game-surface: #070707; --cell: #121212; --cell-line: #2a2a2a; color-scheme: dark;
+}
+[data-theme='catppuccin'] {
+  --bg: #181825; --fg: #cdd6f4; --card: #1e1e2e; --elevated: #28283d; --border: #313244; --muted: #a6adc8;
+  --subtle: #242437; --accent: #cba6f7; --accent-fg: #181825; --success: #a6e3a1; --warning: #f9e2af; --danger: #f38ba8;
+  --gold: #f9e2af; --game-surface: #1e1e2e; --cell: #26263a; --cell-line: #3b3c52; color-scheme: dark;
+}
+[data-theme='github'] {
+  --bg: #f6f8fa; --fg: #1f2328; --card: #ffffff; --elevated: #eff2f5; --border: #d1d9e0; --muted: #59636e;
+  --subtle: #eef1f4; --accent: #0969da; --accent-fg: #ffffff; --success: #1a7f37; --warning: #9a6700; --danger: #cf222e;
+  --gold: #9a6700; --game-surface: #ffffff; --cell: #f6f8fa; --cell-line: #d1d9e0; color-scheme: light;
+}
+[data-theme='tokyo-night'] {
+  --bg: #16161e; --fg: #c0caf5; --card: #1a1b26; --elevated: #24283b; --border: #292e42; --muted: #9aa5ce;
+  --subtle: #1f2233; --accent: #7aa2f7; --accent-fg: #16161e; --success: #9ece6a; --warning: #e0af68; --danger: #f7768e;
+  --gold: #e0af68; --game-surface: #1a1b26; --cell: #222536; --cell-line: #343a55; color-scheme: dark;
+}
+
+/* Game accents and puzzle region colours adapt to any theme by mixing
+   fixed hues with the current background. */
+:root {
+  --game-patches: color-mix(in oklab, #e8743b 85%, var(--fg));
+  --game-sudoku: color-mix(in oklab, #3b82e8 85%, var(--fg));
+  --game-zip: color-mix(in oklab, #10a37f 85%, var(--fg));
+  --game-werd: color-mix(in oklab, #d4a106 85%, var(--fg));
+  --game-pinpoint: color-mix(in oklab, #e0457b 85%, var(--fg));
+  --game-crossclimb: color-mix(in oklab, #8b5cf6 85%, var(--fg));
+  --game-tango: color-mix(in oklab, #f59e0b 85%, var(--fg));
+  --game-queens: color-mix(in oklab, #7c3aed 70%, var(--fg));
+  --region-0: color-mix(in oklab, #f28b82 52%, var(--game-surface));
+  --region-1: color-mix(in oklab, #fbbc04 48%, var(--game-surface));
+  --region-2: color-mix(in oklab, #a8d672 52%, var(--game-surface));
+  --region-3: color-mix(in oklab, #4ecdc4 48%, var(--game-surface));
+  --region-4: color-mix(in oklab, #7fb3ff 52%, var(--game-surface));
+  --region-5: color-mix(in oklab, #b39ddb 55%, var(--game-surface));
+  --region-6: color-mix(in oklab, #f48fb1 50%, var(--game-surface));
+  --region-7: color-mix(in oklab, #d7b98e 55%, var(--game-surface));
+  --region-8: color-mix(in oklab, #90a4ae 55%, var(--game-surface));
+  --region-9: color-mix(in oklab, #ffab76 52%, var(--game-surface));
+  --region-10: color-mix(in oklab, #80deea 50%, var(--game-surface));
+  --region-11: color-mix(in oklab, #c5e1a5 55%, var(--game-surface));
+  --sun: color-mix(in oklab, #f59e0b 90%, var(--fg));
+  --moon: color-mix(in oklab, #6366f1 80%, var(--fg));
+}
+
+html {
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-tap-highlight-color: transparent;
+}
+body {
+  min-height: 100dvh;
+  font-feature-settings: 'cv11', 'ss01';
+}
+::selection {
+  background: color-mix(in oklab, var(--accent) 30%, transparent);
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Ticker */
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.ticker-track {
+  animation: ticker 40s linear infinite;
+}
+.ticker-track:hover {
+  animation-play-state: paused;
+}
+
+/* Toasts & achievement popups */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes shine {
+  from { transform: translateX(-120%) skewX(-20deg); }
+  to { transform: translateX(220%) skewX(-20deg); }
+}
+@keyframes pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  60% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+.animate-toast-in { animation: toast-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.animate-shine { animation: shine 1.4s ease-out 0.25s both; }
+.animate-pop { animation: pop 0.32s ease-out both; }
+.animate-shake { animation: shake 0.25s ease-in-out 2; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .ticker-track { animation: none; transform: none; }
+}
+
+/* Game board helpers */
+.board {
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}

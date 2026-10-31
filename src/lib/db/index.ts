@@ -35,7 +35,7 @@ export async function maybeOne<T = Row>(q: Queryable, text: string, params?: unk
 
 export async function createPgliteDb(dataDir?: string): Promise<Db> {
   const { PGlite } = await import('@electric-sql/pglite');
-  if (dataDir) fs.mkdirSync(dataDir, { recursive: true });
+  if (dataDir) fs.mkdirSync(/* turbopackIgnore: true */ dataDir, { recursive: true });
   const pg = dataDir ? new PGlite(dataDir) : new PGlite();
   await pg.waitReady;
   const wrap = (q: { query: (t: string, p?: unknown[]) => Promise<{ rows: unknown[] }> }): Queryable => ({
@@ -69,14 +69,15 @@ export async function createPostgresDb(url: string): Promise<Db> {
   };
 }
 
-const MIGRATIONS_DIR = path.join(process.cwd(), 'db', 'migrations');
+// Included in the server bundle via outputFileTracingIncludes (next.config.ts).
+const MIGRATIONS_DIR = path.join(/* turbopackIgnore: true */ process.cwd(), 'db', 'migrations');
 
 export function readMigrations(dir = MIGRATIONS_DIR): { version: string; sql: string }[] {
   return fs
-    .readdirSync(dir)
+    .readdirSync(/* turbopackIgnore: true */ dir)
     .filter((f) => /^\d{4}_.+\.sql$/.test(f))
     .sort()
-    .map((f) => ({ version: f.replace(/\.sql$/, ''), sql: fs.readFileSync(path.join(dir, f), 'utf8') }));
+    .map((f) => ({ version: f.replace(/\.sql$/, ''), sql: fs.readFileSync(/* turbopackIgnore: true */ path.join(dir, f), 'utf8') }));
 }
 
 /** Applies pending migrations in order, each in its own transaction. */
@@ -162,7 +163,7 @@ export function getDb(): Promise<Db> {
       if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PGLITE_IN_PRODUCTION !== '1') {
         throw new Error('DATABASE_URL is required in production.');
       }
-      const db = await createPgliteDb(process.env.PGLITE_DATA_DIR ?? path.join(process.cwd(), '.data', 'pglite'));
+      const db = await createPgliteDb(process.env.PGLITE_DATA_DIR ?? path.join(/* turbopackIgnore: true */ process.cwd(), '.data', 'pglite'));
       await migrate(db);
       return db;
     })().catch((err) => {

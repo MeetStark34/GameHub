@@ -1,0 +1,218 @@
+'use client';
+
+import dynamic from 'next/dynamic';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
+import { ChevronDown, Info, RefreshCw } from 'lucide-react';
+import { DIFFICULTY_LABELS, GAMES } from '@/config/games';
+import type { ActResponse, SessionView } from '@/lib/contracts';
+import { formatDuration } from '@/lib/time';
+import { DIFFICULTIES, type Difficulty, type GameId, type GameMode } from '@/games/types';
+import { GameGlyph } from '@/components/brand';
+import { useToasts, usePrefs } from '@/components/providers';
+import { Button, ButtonLink, Card, cn } from '@/components/ui';
+import type { BoardProps } from './board-kit';
+import { ResultPanel } from './result-panel';
+
+const loading = () => <div className="mx-auto aspect-square w-full max-w-md animate-pulse rounded-2xl bg-subtle" />;
+// Code-split: each game's board only loads when that game is played.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const BOARDS: Record<GameId, ComponentType<BoardProps<any>>> = {
+  patches: dynamic(() => import('./boards/patches-board'), { loading }),
+  sudoku: dynamic(() => import('./boards/sudoku-board'), { loading }),
+  zip: dynamic(() => import('./boards/zip-board'), { loading }),
+  werd: dynamic(() => import('./boards/werd-board'), { loading }),
+  pinpoint: dynamic(() => import('./boards/pinpoint-board'), { loading }),
+  crossclimb: dynamic(() => import('./boards/crossclimb-board'), { loading }),
+  tango: dynamic(() => import('./boards/tango-board'), { loading }),
+  queens: dynamic(() => import('./boards/queens-board'), { loading }),
+};
+
+async function post<T>(url: string, body: unknown): Promise<{ data?: T; error?: string; status: number }> {
+  try {
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) return { error: json.error ?? 'Something went wrong.', status: res.status };
+    return { data: json as T, status: res.status };
+  } catch {
+    return { error: 'You appear to be offline. Your progress is saved on this device.', status: 0 };
+  }
+}
+
+export function PlayClient({ game, mode, difficulty }: { game: GameId; mode: GameMode; difficulty: Difficulty }) {
+  const meta = GAMES[game];
+  const router = useRouter();
+  const { push } = useToasts();
+  const { play } = usePrefs();
+  const [view, setView] = useState<SessionView | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [message, setMessage] = useState<{ text: string; id: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [offset, setOffset] = useState(0);
+
+  const start = useCallback(
+    async (fresh = false) => {
+      setError(null);
+      setView(null);
+      const r = await post<SessionView>('/api/play/start', { game, mode, difficulty, fresh });
+      if (!r.data) return setError(r.error ?? 'Could not start the game.');
+      setOffset(new Date(r.data.serverNow).getTime() - Date.now());
+      setView(r.data);
+      if (r.data.status === 'active') router.refresh(); // header picks up a newly created guest
+    },
+    [game, mode, difficulty, router],
+  );
+
+  // Guard against StrictMode's double effect run (would create two guests).
+  const startedKey = useRef<string | null>(null);
+  useEffect(() => {
+    const key = `${game}:${mode}:${difficulty}`;
+    if (startedKey.current === key) return;
+    startedKey.current = key;
+    void start(false);
+  }, [start, game, mode, difficulty]);
+
+  const act = useCallback(
+    async (action: unknown): Promise<ActResponse | null> => {
+      if (!view) return null;
+      setBusy(true);
+      const r = await post<ActResponse>(`/api/play/${view.id}/act`, { action });
+      setBusy(false);
+      if (!r.data) {
+        setMessage({ text: r.error ?? 'Something went wrong.', id: Date.now() });
+        play('error');
+        if (r.status === 410) router.refresh();
+        return null;
+      }
+      setView(r.data.view);
+      if (r.data.message) {
+        setMessage({ text: r.data.message, id: Date.now() });
+        if (!r.data.solved) play('error');
+      } else setMessage(null);
+      if (r.data.completion && r.data.view.status === 'completed') {
+        const c = r.data.completion;
+        play(c.perfect ? 'perfect' : 'complete');
+        push(c.events);
+        router.refresh();
+      }
+      return r.data;
+    },
+    [view, play, push, router],
+  );
+
+  const Board = BOARDS[game];
+  const done = view?.status === 'completed';
+
+  return (
+    <div className="mx-auto max-w-3xl">
+      <div className="mb-4 flex flex-wrap items-center gap-3">
+        <span className="grid size-11 place-items-center rounded-xl text-white" style={{ background: `var(${meta.accentVar})` }}>
+          <GameGlyph game={game} className="size-6" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <h1 className="font-display text-2xl font-bold leading-tight tracking-tight">{meta.name}</h1>
+          <p className="text-sm text-muted">
+            <span className={cn('font-semibold', mode === 'daily' ? 'text-accent' : 'text-fg')}>{mode === 'daily' ? 'Daily Set' : 'Unlimited'}</span>
+            {' · '}
+            {DIFFICULTY_LABELS[view?.difficulty ?? difficulty]}
+            {view?.dailyDate && ` · ${view.dailyDate}`}
+          </p>
+        </div>
+        {view && <Timer view={view} offset={offset} />}
+      </div>
+
+      {mode === 'unlimited' && (
+        <div className="mb-4 flex flex-wrap items-center gap-2">
+          <div role="radiogroup" aria-label="Difficulty" className="flex rounded-xl border border-border bg-card p-1">
+            {DIFFICULTIES.map((d) => (
+              <Link
+                key={d}
+                role="radio"
+                aria-checked={d === difficulty}
+                href={`/play/${game}?mode=unlimited&difficulty=${d}`}
+                className={cn('rounded-lg px-3 py-1 text-sm font-medium', d === difficulty ? 'bg-accent text-accent-fg' : 'text-muted hover:text-fg')}
+              >
+                {DIFFICULTY_LABELS[d]}
+              </Link>
+            ))}
+          </div>
+          <Button variant="secondary" size="sm" onClick={() => start(true)} disabled={busy}>
+            <RefreshCw className="size-4" aria-hidden /> New puzzle
+          </Button>
+        </div>
+      )}
+
+      <Card className="mb-4 overflow-hidden">
+        <button onClick={() => setRulesOpen((o) => !o)} aria-expanded={rulesOpen} className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm font-medium">
+          <Info className="size-4 text-muted" aria-hidden />
+          <span className="flex-1">{meta.tagline}</span>
+          <span className="text-muted">How to play</span>
+          <ChevronDown className={cn('size-4 text-muted transition', rulesOpen && 'rotate-180')} aria-hidden />
+        </button>
+        {rulesOpen && (
+          <ul className="list-disc space-y-1 border-t border-border px-8 py-3 text-sm text-muted">
+            {meta.rules.map((r) => (
+              <li key={r}>{r}</li>
+            ))}
+            <li>No timer pressure and no fail state. Your time is recorded, never enforced.</li>
+          </ul>
+        )}
+      </Card>
+
+      {error && (
+        <Card className="p-6 text-center">
+          <p className="mb-4 text-danger">{error}</p>
+          <Button onClick={() => start(false)}>Try again</Button>
+        </Card>
+      )}
+
+      {!error && !view && loading()}
+
+      {view && (
+        <>
+          <div className="relative">
+            <Board key={view.id} sessionId={view.id} puzzle={view.puzzle as never} solved={done} busy={busy} act={act} />
+          </div>
+          <p aria-live="assertive" className={cn('mt-3 min-h-6 text-center text-sm font-medium', message && !done ? 'text-danger' : 'text-success')}>
+            {!done && message?.text}
+          </p>
+        </>
+      )}
+
+      {done && view?.completion && (
+        <div className="mt-6">
+          <ResultPanel result={view.completion} onPlayAgain={mode === 'unlimited' ? () => start(true) : undefined} />
+        </div>
+      )}
+
+      {!done && view && (
+        <div className="mt-6 flex justify-center">
+          <ButtonLink href={mode === 'daily' ? '/daily' : '/unlimited'} variant="ghost" size="sm">
+            Back to {mode === 'daily' ? 'Daily Set' : 'Unlimited'}
+          </ButtonLink>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Timer({ view, offset }: { view: SessionView; offset: number }) {
+  const [now, setNow] = useState(() => Date.now() + offset);
+  const done = view.status === 'completed';
+  useEffect(() => {
+    if (done) return;
+    const id = window.setInterval(() => setNow(Date.now() + offset), 1000);
+    return () => window.clearInterval(id);
+  }, [done, offset]);
+  const ms = done && view.completion ? view.completion.durationMs : Math.max(0, now - new Date(view.startedAt).getTime());
+  return (
+    <div className="rounded-xl border border-border bg-card px-3 py-1.5 text-right">
+      <p className="font-mono text-[10px] uppercase tracking-widest text-muted">{done ? 'Final time' : 'Time'}</p>
+      <p className="num font-mono text-lg font-bold leading-tight" aria-label={`Elapsed ${formatDuration(ms)}`}>
+        {formatDuration(ms)}
+      </p>
+    </div>
+  );
+}

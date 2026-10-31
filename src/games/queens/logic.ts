@@ -52,6 +52,25 @@ export function queensConflicts(puzzle: QueensPuzzle, crowns: Cell[]): Set<strin
   return bad;
 }
 
+/** First solution (column per row), or null. Used by tests and tooling. */
+export function solveQueens(puzzle: QueensPuzzle): QueensSolution | null {
+  const n = puzzle.size;
+  const cols: number[] = [];
+  const go = (row: number): boolean => {
+    if (row === n) return true;
+    for (let c = 0; c < n; c++) {
+      if (cols.includes(c) || (row > 0 && Math.abs(c - cols[row - 1]) <= 1)) continue;
+      const reg = puzzle.regions[row][c];
+      if (cols.some((cc, r) => puzzle.regions[r][cc] === reg)) continue;
+      cols.push(c);
+      if (go(row + 1)) return true;
+      cols.pop();
+    }
+    return false;
+  };
+  return go(0) ? cols : null;
+}
+
 /** Counts solutions up to `limit` (row-by-row backtracking). */
 export function countQueensSolutions(puzzle: QueensPuzzle, limit = 2): number {
   const n = puzzle.size;

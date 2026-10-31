@@ -9,6 +9,7 @@ import { rankFromXp } from '@/lib/progression/ranks';
 import { emptyStreak, recordQualifyingDay, viewStreak, type StreakState } from '@/lib/progression/streaks';
 import { streakMilestoneXp } from '@/lib/progression/xp';
 import { GAME_IDS, type Difficulty, type GameId } from '@/games/types';
+import type { RewardEvent, UnlockedAchievement } from '@/lib/contracts';
 import type { UtcDate } from '@/lib/time';
 
 /**
@@ -41,24 +42,7 @@ export interface StatsRow {
   cards_used: number;
 }
 
-export interface RewardEvent {
-  kind:
-    | 'level-up'
-    | 'achievement'
-    | 'punch'
-    | 'card-created'
-    | 'pocket-full'
-    | 'card-converted'
-    | 'daily-set-complete'
-    | 'true-player'
-    | 'streak-milestone'
-    | 'streak-repaired'
-    | 'mastery-up';
-  title: string;
-  body: string;
-  xp?: number;
-  data?: Record<string, unknown>;
-}
+export type { RewardEvent } from '@/lib/contracts';
 
 export async function ensureStats(tx: Queryable, userId: string): Promise<StatsRow> {
   await tx.query('insert into user_stats (user_id) values ($1) on conflict do nothing', [userId]);
@@ -271,13 +255,7 @@ export async function loadAchievementStats(tx: Queryable, userId: string, today:
   };
 }
 
-export interface UnlockedAchievement {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  xp: number;
-}
+export type { UnlockedAchievement } from '@/lib/contracts';
 
 /**
  * Unlocks every newly satisfied achievement. Runs a second pass because

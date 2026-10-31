@@ -1,6 +1,6 @@
 import { createPgliteDb, migrate, type Db } from '@/lib/db';
 import type { GameId } from '@/games/types';
-import { solutionToCells } from '@/games/queens/logic';
+import { winningActionFor } from '@/server/solutions';
 
 export async function testDb(): Promise<Db> {
   const db = await createPgliteDb();
@@ -8,19 +8,7 @@ export async function testDb(): Promise<Db> {
   return db;
 }
 
-/** Builds the winning action for a game from its stored reference solution. */
-export function winningAction(game: GameId, solution: unknown): unknown {
-  switch (game) {
-    case 'werd':
-      return { type: 'guess', word: solution };
-    case 'pinpoint':
-      return { type: 'guess', option: solution };
-    case 'queens':
-      return { type: 'submit', solution: solutionToCells(solution as number[]) };
-    default:
-      return { type: 'submit', solution };
-  }
-}
+export const winningAction = winningActionFor;
 
 export async function solutionFor(db: Db, sessionId: string): Promise<{ game: GameId; solution: unknown }> {
   const rows = await db.query<{ game: GameId; solution: unknown }>(

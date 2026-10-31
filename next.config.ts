@@ -11,6 +11,8 @@ const nextConfig: NextConfig = {
   // PGlite ships WASM + data files and must be loaded by Node, not bundled.
   serverExternalPackages: ['@electric-sql/pglite', 'postgres'],
   poweredByHeader: false,
+  // Migrations are read at runtime (PGlite dev DB / optional DB_AUTO_MIGRATE).
+  outputFileTracingIncludes: { '/**': ['./db/migrations/*.sql'] },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
