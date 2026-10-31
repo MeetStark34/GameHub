@@ -54,4 +54,5 @@ export const pinpointEngine: GameEngine<PinpointPuzzle, string, PinpointState, P
     const p = (state.revealed - 1) * PINPOINT_PENALTY.perExtraClue + state.wrong.length * PINPOINT_PENALTY.perWrongGuess;
     return Math.min(PINPOINT_PENALTY.max, p);
   },
+  highlights: (_p, state) => (state.revealed === 1 && state.wrong.length === 0 ? ['pinpoint:one-clue'] : []),
 };

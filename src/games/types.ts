@@ -64,6 +64,8 @@ export interface GameEngine<P = any, Sol = any, St = any, Pub = any> {
    * Time is scored separately by the shared scoring module.
    */
   penalty(puzzle: P, state: St): number;
+  /** Notable things about a solved run, for achievements (e.g. 'werd:first-guess'). */
+  highlights?(puzzle: P, state: St): string[];
 }
 
 /** Common state shape for "solve the board, then submit" logic games. */

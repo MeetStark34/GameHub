@@ -39,4 +39,5 @@ export const werdEngine: GameEngine<WerdPuzzle, string, WerdState, WerdClient> =
     const extra = Math.max(0, state.guesses.length - puzzle.parGuesses);
     return Math.min(WERD_PENALTY.max, extra * WERD_PENALTY.perExtraGuess);
   },
+  highlights: (_p, state) => (state.guesses.length === 1 ? ['werd:first-guess'] : []),
 };
