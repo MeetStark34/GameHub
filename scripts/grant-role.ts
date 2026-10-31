@@ -32,7 +32,7 @@ if (!user) {
 }
 if (revoke) await query('delete from user_roles where user_id = $1 and role = $2', [user.id, role]);
 else await query('insert into user_roles (user_id, role) values ($1, $2) on conflict do nothing', [user.id, role]);
-await query(`insert into admin_audit_log (actor_id, action, target_user_id, details) values (null, $1, $2, $3::jsonb)`, [
+await query(`insert into admin_audit_log (actor_id, action, target_user_id, details) values (null, $1, $2, $3::text::jsonb)`, [
   revoke ? 'cli-revoke-role' : 'cli-grant-role',
   user.id,
   JSON.stringify({ role, via: 'scripts/grant-role.ts' }),

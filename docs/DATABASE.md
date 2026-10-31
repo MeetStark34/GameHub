@@ -51,3 +51,16 @@ cleanup of old, never-completed Unlimited sessions is not implemented yet.
 - `daily_puzzles.fingerprint | attempt | reused`, plus the new table
   `daily_puzzle_history (game, utc_date, fingerprint, reused)`, PK
   `(game, utc_date)`, index `(game, fingerprint)`. See docs/DAILY.md.
+
+## Repair migrations
+- `0003_repair_json_encoding`: unwraps json/jsonb values that the
+  postgres.js driver had double-encoded (string scalars containing a JSON
+  document) in puzzles, game_sessions, completions, daily_activity,
+  notifications and admin_audit_log. Only strings whose text is a JSON
+  object/array/string are unwrapped, so it is idempotent and lossless.
+- `0004_lock_schema_migrations`: RLS on and anon/authenticated revoked for
+  `schema_migrations`.
+
+Apply to the configured database with `npm run db:migrate:env` (reads
+`.env.local`). Inspect shapes and migration state read-only with
+`npm run db:inspect` (never prints credentials or emails).

@@ -23,6 +23,15 @@ then `docs/DAILY.md` and `docs/I18N.md` for the Phase 22 systems.
 | Admin dashboard | `src/app/admin/page.tsx`, `src/server/admin-dashboard.ts`, `src/server/admin.ts` |
 | Supabase env | `.env.local` (git-ignored), template `.env.example`, `src/lib/db/index.ts` |
 
+## Repair notes (2026-11-01)
+- Supabase is connected (`.env.local`, git-ignored). `npm run db:migrate:env`
+  applies migrations, `npm run db:inspect` checks state read-only, and
+  `npm run test:live` verifies the full pipeline against Supabase inside a
+  rolled-back transaction.
+- jsonb params must stay `JSON.stringify(x)` + `::jsonb` (D-026). Don't pass
+  raw objects to `db.query` for jsonb columns.
+- E2E never uses `.env.local` (DATABASE_URL pinned empty in playwright.config.ts).
+
 ## Next tasks
 1. **Supabase**: reset the database password (Project Settings → Database),
    put it in `.env.local` as `DATABASE_URL` (direct connection, port 5432),

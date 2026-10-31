@@ -92,7 +92,7 @@ describe('admin dashboard data', () => {
     expect(d.xpDistribution).toHaveLength(10);
     expect(d.xpDistribution.reduce((s, x) => s + x.count, 0)).toBeGreaterThan(0);
     expect(d.dailyPools.find((p) => p.game === 'pinpoint')?.pool).toBeGreaterThan(150);
-    expect(d.system.migrations).toEqual(['0001_init', '0002_phase22']);
+    expect(d.system.migrations).toEqual(expect.arrayContaining(['0001_init', '0002_phase22', '0003_repair_json_encoding', '0004_lock_schema_migrations']));
     expect(Array.isArray(d.suspicious.nearFloor)).toBe(true);
   });
 });

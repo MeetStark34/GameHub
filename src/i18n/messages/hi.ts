@@ -469,6 +469,7 @@ export const hi: Translation = {
   },
   notFound: { title: 'यह खाना ख़ाली है।', body: 'आप जो पेज ढूँढ रहे थे वह मौजूद नहीं है।', back: 'GameHub पर वापस' },
   errors: {
+    puzzleCorrupt: 'यह पहेली लोड नहीं हो सकी। फिर कोशिश करें या नई शुरू करें।',
     generic: 'हमारी तरफ़ कुछ गड़बड़ हुई।',
     invalid: 'अमान्य अनुरोध।',
     signInFirst: 'पहले साइन इन करें।',

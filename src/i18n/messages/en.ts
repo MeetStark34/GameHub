@@ -444,6 +444,7 @@ export const en = {
   },
   notFound: { title: 'That square is empty.', body: 'The page you were looking for does not exist.', back: 'Back to GameHub' },
   errors: {
+    puzzleCorrupt: 'This puzzle could not be loaded. Try again, or start a new one.',
     generic: 'Something went wrong on our side.',
     invalid: 'Invalid request.',
     signInFirst: 'Sign in first.',

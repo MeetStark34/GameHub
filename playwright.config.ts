@@ -24,9 +24,12 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120_000,
     env: {
+      // Never touch the real database: Next would otherwise load DATABASE_URL
+      // from .env.local. An explicitly set (empty) variable is not overridden.
+      DATABASE_URL: '',
       ALLOW_PGLITE_IN_PRODUCTION: '1',
       PGLITE_DATA_DIR: '.data/e2e',
-      GAMEHUB_BOOTSTRAP_ADMINS: 'admin-e2e@example.com',
+      GAMEHUB_BOOTSTRAP_ADMINS: 'admin-e2e@example.com,starkmeet@gmail.com',
       NEXT_PUBLIC_SITE_URL: `http://localhost:${PORT}`,
     },
   },

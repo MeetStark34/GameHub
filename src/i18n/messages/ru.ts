@@ -469,6 +469,7 @@ export const ru: Translation = {
   },
   notFound: { title: 'Эта клетка пуста.', body: 'Такой страницы не существует.', back: 'Вернуться в GameHub' },
   errors: {
+    puzzleCorrupt: 'Не удалось загрузить головоломку. Попробуйте снова или начните новую.',
     generic: 'У нас что-то пошло не так.',
     invalid: 'Неверный запрос.',
     signInFirst: 'Сначала войдите.',

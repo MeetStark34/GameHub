@@ -1,4 +1,25 @@
-# Current state (2026-10-31, after Phase 22)
+# Current state
+
+## Repair (2026-11-01): Supabase gameplay fixed
+- Root cause of `puzzle.waypoints is not iterable`: postgres.js double-encoded
+  every jsonb write (puzzles, session state, results, notifications) on
+  Supabase. Fixed in the driver config, repaired in place by migration 0003,
+  and guarded by server-side puzzle schemas (D-026).
+- Supabase migrations applied: 0001–0004 (0004 locks down `schema_migrations`).
+- Verified on Supabase (`npm run test:live`, rolled back): all 8 games in
+  Daily and in Unlimited at all 4 difficulties, XP, streaks, True Player,
+  idempotency, bootstrap admin, showcase, leaderboard exclusion.
+- `starkmeet@gmail.com` has no account yet. Signing up with that email
+  (server env `GAMEHUB_BOOTSTRAP_ADMINS`) grants admin and the Developer
+  badge. With handle `mstark`, the Legend showcase and leaderboard exclusion
+  are applied automatically.
+- Any dev server started before this fix must be restarted: it keeps the old
+  database client in memory.
+- Gates: lint, typecheck, 126 unit/integration, 3 live, 16 E2E, build: all passing.
+
+---
+
+# State after Phase 22 (2026-10-31)
 
 ## Summary
 GameHub runs completely locally: 8 games × Daily/Unlimited × 4

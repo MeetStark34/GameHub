@@ -11,6 +11,7 @@ import { completionXp } from '@/lib/progression/xp';
 import { createRng } from '@/lib/rng';
 import { addDays, parseUtcDate, toUtcDate, type UtcDate } from '@/lib/time';
 import { ENGINES } from '@/games/registry';
+import { isValidClientPuzzle } from '@/games/client-schemas';
 import { GAME_IDS, type Difficulty, type GameId, type GameMode } from '@/games/types';
 import {
   advanceStreak,
@@ -97,7 +98,7 @@ export function chooseDailyPuzzle(game: GameId, date: UtcDate, difficulty: Diffi
  * history, stored with its fingerprint, and never changed afterwards;
  * concurrent first requests converge on one set.
  */
-export async function ensureDailySet(db: Db, date: UtcDate): Promise<{ difficulty: Difficulty; puzzles: Record<GameId, string> }> {
+export async function ensureDailySet(db: Db, date: UtcDate, retry = true): Promise<{ difficulty: Difficulty; puzzles: Record<GameId, string> }> {
   const existing = await db.query<{ game: GameId; puzzle_id: string; difficulty: Difficulty }>(
     `select dp.game, dp.puzzle_id, ds.difficulty from daily_puzzles dp join daily_sets ds using (utc_date) where dp.utc_date = $1`,
     [date],
@@ -140,7 +141,9 @@ export async function ensureDailySet(db: Db, date: UtcDate): Promise<{ difficult
       if (g.reused) console.warn(`[daily] ${g.game} pool exhausted on ${date}; reused ${g.fingerprint}`);
     }
   });
-  return ensureDailySet(db, date);
+  if (!retry) throw new Error(`Daily Set for ${date} is incomplete and could not be created.`);
+  // Stored sets are never replaced: re-read whatever is now persisted.
+  return ensureDailySet(db, date, false);
 }
 
 interface SessionRow {
@@ -162,8 +165,29 @@ interface SessionRow {
 const SESSION_SELECT = `select s.*, p.data, c.result from game_sessions s
   join puzzles p on p.id = s.puzzle_id left join completions c on c.session_id = s.id`;
 
+const isRecord = (v: unknown): v is Record<string, unknown> => typeof v === 'object' && v !== null && !Array.isArray(v);
+
+/**
+ * Builds the client view. Stored data is checked at runtime: the puzzle and
+ * state must be JSON objects and the client payload must match the game's
+ * schema, so a malformed row fails loudly here instead of crashing a board.
+ */
 function toView(row: SessionRow, now: Date): SessionView {
   const engine = ENGINES[row.game];
+  if (!isRecord(row.data) || !isRecord(row.state)) {
+    console.error(`[play] malformed stored puzzle/state for session ${row.id} (${row.game})`);
+    throw new PlayError('errors.puzzleCorrupt', 500);
+  }
+  let puzzle: unknown;
+  try {
+    puzzle = engine.toClient(row.data, row.state);
+  } catch {
+    puzzle = undefined;
+  }
+  if (!isValidClientPuzzle(row.game, puzzle)) {
+    console.error(`[play] client puzzle failed validation for session ${row.id} (${row.game})`);
+    throw new PlayError('errors.puzzleCorrupt', 500);
+  }
   return {
     id: row.id,
     game: row.game,
@@ -171,7 +195,7 @@ function toView(row: SessionRow, now: Date): SessionView {
     mode: row.mode,
     dailyDate: row.daily_date,
     status: row.status,
-    puzzle: engine.toClient(row.data, row.state),
+    puzzle,
     startedAt: new Date(row.started_at).toISOString(),
     serverNow: now.toISOString(),
     completion: row.result,

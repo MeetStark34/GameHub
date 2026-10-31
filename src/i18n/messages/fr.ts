@@ -470,6 +470,7 @@ export const fr: Translation = {
   },
   notFound: { title: 'Cette case est vide.', body: 'La page demandée n’existe pas.', back: 'Retour à GameHub' },
   errors: {
+    puzzleCorrupt: 'Ce casse-tête n’a pas pu être chargé. Réessayez ou commencez-en un nouveau.',
     generic: 'Un problème est survenu de notre côté.',
     invalid: 'Requête invalide.',
     signInFirst: 'Connectez-vous d’abord.',

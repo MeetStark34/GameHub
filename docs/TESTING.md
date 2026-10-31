@@ -62,3 +62,20 @@ exercised; only PGlite.
   messages, browser fallback), ticker only on the Dashboard, footer credit
   link, rank control opens the Rank Roadmap.
 Totals at Phase 22: 114 unit/integration, 13 E2E.
+
+## Live database verification (repair, 2026-11-01)
+`npm run test:live` runs `tests/live/supabase.test.ts` against DATABASE_URL
+from `.env.local` through postgres.js, inside a rolled-back transaction:
+migration state and json shape audit; all 8 Daily games (wrong move
+rejected, solve, XP, duplicate-submit idempotency, 8/8 True Player, streak);
+all 8 games × 4 difficulties in Unlimited (no streak effect); bootstrap
+admin + developer showcase + exclusion from all 9 leaderboards.
+Regression tests: `tests/integration/json-encoding.test.ts` (serializer
+contract, client puzzle schemas for every game/difficulty/mode, corrupted
+row rejected then repaired by 0003, idempotency). E2E
+`tests/e2e/accounts.spec.ts`: all 8 Daily boards open with no page errors;
+normal account gets 404 on /admin; starkmeet@gmail.com (bootstrap) gets
+admin + Developer badge + Legend showcase and leaderboard exclusion,
+surviving reload, a reopened browser and sign-out/sign-in; forged cookies
+and direct API calls are refused.
+Totals: 126 unit/integration (+3 live, opt-in), 16 E2E.

@@ -159,3 +159,33 @@ both Elite and Legend; the default is Legend, configurable via `targetXp`.
 
 ## D-025 Reset ticker is a Dashboard route layout
 `src/app/dashboard/layout.tsx` renders it, so no other page can show it.
+
+## D-026 JSON parameters are JSON text on every driver (repair, 2026-11-01)
+All json/jsonb parameters are passed as `JSON.stringify(x)` with a `::jsonb`
+cast. postgres.js's default jsonb serializer JSON-encodes again, which stored
+every puzzle, state, result and notification on Supabase as a JSON string
+(root cause of `puzzle.waypoints is not iterable`). `postgresClientOptions`
+in `src/lib/db/index.ts` overrides the json/jsonb serializer to send strings
+as-is. Migration 0003 repaired existing rows in place. Server-side runtime
+schemas (`src/games/client-schemas.ts`) validate every puzzle before it
+reaches a board; a malformed row returns `errors.puzzleCorrupt` instead of
+crashing the client. No silent fallbacks.
+
+## D-027 Bootstrap admins also get the Developer badge; showcase on first grant
+`GAMEHUB_BOOTSTRAP_ADMINS` (server env only) grants the `admin` role and the
+cosmetic `developer` badge on sign-up/sign-in. If that account's handle is
+`DEVELOPER.handle` (mstark), the developer showcase and leaderboard exclusion
+are applied once, when the role is first granted, so later sign-ins never
+overwrite real progress. Permissions still come only from `user_roles`.
+
+## D-028 Live database verification runs in a rolled-back transaction
+`npm run test:live` drives the real services through postgres.js against
+DATABASE_URL inside one transaction that is always rolled back (savepoints
+for nested transactions), so Supabase-specific behaviour is verified without
+leaving data behind. E2E always runs on an isolated PGlite database:
+`playwright.config.ts` pins `DATABASE_URL` to empty so `.env.local` is
+never used by tests.
+
+## D-029 schema_migrations is locked down like every other table
+The runner-created `schema_migrations` table was exposed to Supabase's
+anon/authenticated roles; migration 0004 enables RLS and revokes access.

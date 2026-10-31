@@ -51,14 +51,33 @@ export async function createPgliteDb(dataDir?: string): Promise<Db> {
   };
 }
 
+/**
+ * JSON parameter convention (both drivers): application code always passes
+ * json/jsonb values as JSON *text* (`JSON.stringify(x)` with a `$n::jsonb`
+ * cast). postgres.js would otherwise JSON-encode that text a second time
+ * (its default jsonb serializer is JSON.stringify), storing a JSON string
+ * scalar instead of the object. That double encoding is what broke every
+ * puzzle on Supabase (e.g. Zip's `puzzle.waypoints` was undefined).
+ */
+export const serializeJsonParam = (x: unknown) => (typeof x === 'string' ? x : JSON.stringify(x));
+
+export const postgresClientOptions: { prepare: false; types: Record<string, { to: number; from: number[]; serialize: (x: unknown) => string; parse: (x: string) => unknown }> } = {
+  // prepare:false keeps us compatible with Supabase's transaction pooler.
+  prepare: false,
+  types: {
+    json: { to: 114, from: [114, 3802], serialize: serializeJsonParam, parse: (x: string) => JSON.parse(x) },
+  },
+};
+
+type Unsafe = { unsafe: (text: string, params?: never[]) => PromiseLike<unknown> };
+export const wrapPostgres = (s: Unsafe): Queryable => ({
+  query: async <T,>(text: string, params?: unknown[]) => (await s.unsafe(text, (params ?? []) as never[])) as T[],
+});
+
 export async function createPostgresDb(url: string): Promise<Db> {
   const { default: postgres } = await import('postgres');
-  // prepare:false keeps us compatible with Supabase's transaction pooler.
-  const sql = postgres(url, { prepare: false, max: Number(process.env.DB_POOL_MAX ?? 5), idle_timeout: 20 });
-  type Unsafe = { unsafe: (text: string, params?: never[]) => PromiseLike<unknown> };
-  const wrap = (s: Unsafe): Queryable => ({
-    query: async <T,>(text: string, params?: unknown[]) => (await s.unsafe(text, (params ?? []) as never[])) as T[],
-  });
+  const sql = postgres(url, { ...postgresClientOptions, max: Number(process.env.DB_POOL_MAX ?? 5), idle_timeout: 20 });
+  const wrap = wrapPostgres;
   return {
     ...wrap(sql),
     tx: (fn) => sql.begin((tx) => fn(wrap(tx))) as Promise<never>,
