@@ -69,3 +69,4 @@ Start with `PROJECT_MASTER.md`, then `CURRENT_STATE.md` and `AI_HANDOFF.md`.
 Details: `DECISIONS.md`, `FILE_MAP.md`, `docs/`.
 
 Word lists: SCOWL (see `THIRD_PARTY_NOTICES.md`).
+"# StarkGameHub" 
