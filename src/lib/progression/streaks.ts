@@ -86,6 +86,29 @@ function repairOption(s: StreakState, today: UtcDate): StreakView['repairable'] 
   return null;
 }
 
+/**
+ * Manual (admin) adjustment of the streak value players see today, by
+ * `delta` days. Keeps the date metadata consistent so the normal rules carry
+ * on from the new value, with no special protection:
+ *  - live streak (last day today or yesterday): only `current` changes, the
+ *    due date stays, so missing tomorrow still breaks it;
+ *  - broken or no streak: starts a live streak due today (last day =
+ *    yesterday); a lapsed value is kept repairable exactly like a fresh start;
+ *  - reaching 0 clears the streak so the next Daily game starts it at 1.
+ * `best` is a lifetime high and never goes down. Returns null when the
+ * result would be negative.
+ */
+export function adjustStreak(s: StreakState, delta: number, today: UtcDate): StreakState | null {
+  const view = viewStreak(s, today);
+  const target = view.current + delta;
+  if (!Number.isInteger(delta) || target < 0) return null;
+  if (target === 0) return { ...s, current: 0, lastDate: null };
+  const alive = view.current > 0;
+  if (alive) return { ...s, current: target, best: Math.max(s.best, target) };
+  const lost = s.current > 0 && s.lastDate ? { lostValue: s.current, lostLastDate: s.lastDate } : { lostValue: s.lostValue, lostLastDate: s.lostLastDate };
+  return { ...s, ...lost, current: target, best: Math.max(s.best, target), lastDate: addDays(today, -1) };
+}
+
 /** Applies a repair card. Returns null if nothing is repairable today. */
 export function repairStreak(s: StreakState, today: UtcDate): StreakState | null {
   const option = repairOption(s, today);

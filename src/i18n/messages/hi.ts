@@ -162,6 +162,11 @@ export const hi: Translation = {
     atRiskTitle: 'स्ट्रीक ख़तरे में',
     atRiskBody: 'अपनी {count} दिन की स्ट्रीक बचाने के लिए 00:00 UTC से पहले एक Daily Set गेम खेलें।',
     dayStreak: 'दिन की स्ट्रीक',
+    short: 'स्ट्रीक',
+    trueShort: 'True Player',
+    header: 'आपकी स्ट्रीक',
+    headerLabel: 'स्ट्रीक: सामान्य स्ट्रीक {normal} दिन, True Player स्ट्रीक {truePlayer} दिन',
+    utcNote: 'दिन UTC के अनुसार गिने जाते हैं (00:00 UTC पर रीसेट)। अनलिमिटेड गेम कभी नहीं गिने जाते।',
   },
   daily: {
     title: 'आज का Daily Set',
@@ -222,6 +227,7 @@ export const hi: Translation = {
       firstDaily: 'आज का पहला Daily गेम',
       setComplete: 'Daily Set पूरा',
     },
+    xpFrozen: 'इस खाते का XP फ़्रीज़ है। गेम फिर भी गिना जाता है।',
   },
   achievements: {
     title: 'उपलब्धियाँ',

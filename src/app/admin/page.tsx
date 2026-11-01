@@ -249,7 +249,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
               <input name="q" defaultValue={q} placeholder="Search handle, email or name" className="h-10 flex-1 rounded-xl border border-border bg-card px-3" aria-label="Search users" />
               <button className="h-10 rounded-xl bg-accent px-4 text-sm font-semibold text-accent-fg">Search</button>
             </form>
-            <UserList q={q} />
+            <UserList q={q} actorId={user.id} now={now} />
           </section>
         </div>
       )}
@@ -278,16 +278,28 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
   );
 }
 
-async function UserList({ q }: { q: string }) {
-  const users = await adminSearchUsers(await getDb(), q.slice(0, 64));
+function UserStat({ label, value, sub }: { label: string; value: React.ReactNode; sub?: React.ReactNode }) {
   return (
-    <div className="space-y-2">
+    <div className="rounded-lg bg-subtle/60 px-2.5 py-1.5">
+      <p className="text-[10px] uppercase tracking-wide text-muted">{label}</p>
+      <p className="num font-mono text-sm font-bold">{value}</p>
+      {sub && <p className="text-[10px] text-muted">{sub}</p>}
+    </div>
+  );
+}
+
+async function UserList({ q, actorId, now }: { q: string; actorId: string; now: Date }) {
+  const users = await adminSearchUsers(await getDb(), q.slice(0, 64), now);
+  const achievements = ACHIEVEMENTS.map((a) => ({ id: a.id, name: a.name }));
+  return (
+    <div className="space-y-3">
       {users.map((u) => (
-        <Card key={u.id} className="p-3">
-          <div className="mb-2 flex flex-wrap items-center gap-2 text-sm">
+        <Card key={u.id} className="space-y-3 p-3" data-admin-user={u.handle}>
+          <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="font-semibold">{u.display_name}</span>
             <span className="text-muted">@{u.handle}</span>
             {u.email && <span className="text-xs text-muted">{u.email}</span>}
+            {u.id === actorId && <Pill>you</Pill>}
             {u.is_guest && <Pill>guest</Pill>}
             {u.roles.map((r) => (
               <Pill key={r} className="border-danger/40 text-danger">
@@ -298,9 +310,34 @@ async function UserList({ q }: { q: string }) {
               <Pill key={b}>badge: {b}</Pill>
             ))}
             {u.leaderboard_excluded && <Pill>leaderboard-excluded</Pill>}
-            <span className="num ml-auto font-mono text-xs">{(u.total_xp ?? 0).toLocaleString('en-US')} XP</span>
           </div>
-          <AdminUserTools userId={u.id} roles={u.roles} badges={u.badges} excluded={u.leaderboard_excluded} achievements={ACHIEVEMENTS.map((a) => ({ id: a.id, name: a.name }))} />
+          <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-5">
+            <UserStat label="XP" value={u.total_xp.toLocaleString('en-US')} />
+            <UserStat
+              label="XP frozen"
+              value={<span className={u.xp_frozen ? 'text-warning' : undefined}>{u.xp_frozen ? 'ON' : 'OFF'}</span>}
+              sub={u.xp_freeze_changed_at ? `changed ${new Date(u.xp_freeze_changed_at).toISOString().slice(0, 16).replace('T', ' ')}` : undefined}
+            />
+            <UserStat label="Normal Streak" value={`${u.streaks.normal.current} d`} sub={`${u.streaks.normal.status} · best ${u.streaks.normal.best}`} />
+            <UserStat label="True Player" value={`${u.streaks.truePlayer.current} d`} sub={`${u.streaks.truePlayer.status} · best ${u.streaks.truePlayer.best}`} />
+            <UserStat label="Repair cards" value={u.cards_held} />
+          </div>
+          <AdminUserTools
+            user={{
+              id: u.id,
+              handle: u.handle,
+              displayName: u.display_name,
+              email: u.email,
+              isSelf: u.id === actorId,
+              isDeveloper: u.handle === DEVELOPER.handle,
+              totalXp: u.total_xp,
+              xpFrozen: u.xp_frozen,
+              roles: u.roles,
+              badges: u.badges,
+              excluded: u.leaderboard_excluded,
+            }}
+            achievements={achievements}
+          />
         </Card>
       ))}
       {users.length === 0 && <p className="text-sm text-muted">No users match.</p>}

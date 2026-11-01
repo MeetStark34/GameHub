@@ -61,6 +61,10 @@ test('2-7. Daily Queens: solve, XP, mastery, achievement, streak', async () => {
   await expect(page.getByText('Done today').first()).toBeVisible();
   const xp = await page.locator('header').getByText(/XP$/).first().textContent();
   expect(Number(xp!.replace(/\D/g, ''))).toBeGreaterThan(0);
+  // Header shows both streaks: one Daily game = Normal 1, True Player still 0.
+  const streaks = page.getByTestId('header-streaks');
+  await expect(streaks.locator('[data-streak="normal"]')).toHaveText(/^1/);
+  await expect(streaks.locator('[data-streak="true-player"]')).toHaveText(/^0/);
 });
 
 test('guest claims account (progress kept) and becomes bootstrap admin', async () => {
@@ -87,6 +91,8 @@ test('8-9. all eight Daily games -> True Player Streak (admin dev tool)', async 
   await expect(page.getByText('Complete. True Player day secured.')).toBeVisible();
   const tp = page.locator('div', { has: page.getByText('True Player Streak', { exact: true }) }).first();
   await expect(tp).toContainText('1');
+  // The header picks up the True Player day.
+  await expect(page.getByTestId('header-streaks').locator('[data-streak="true-player"]')).toHaveText(/^1/);
 });
 
 test('10. Unlimited Mini Sudoku works (keyboard play)', async () => {

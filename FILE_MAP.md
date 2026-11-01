@@ -45,7 +45,7 @@ src/
   app/                           Next.js App Router pages + api/ route handlers
   components/
     providers.tsx                theme / sound / toast context, achievement popup
-    layout/                      reset ticker, header, nav, bottom nav, footer
+    layout/                      reset ticker, header (streak-menu: both streaks), nav, bottom nav, footer
     play/play-client.tsx         session lifecycle, timer, results; loads boards dynamically
     play/boards/*-board.tsx      one UI per game (pointer, touch, keyboard)
     dashboard/, settings/, admin/, game-card.tsx, brand.tsx, ui.tsx

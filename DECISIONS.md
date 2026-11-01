@@ -189,3 +189,38 @@ never used by tests.
 ## D-029 schema_migrations is locked down like every other table
 The runner-created `schema_migrations` table was exposed to Supabase's
 anon/authenticated roles; migration 0004 enables RLS and revokes access.
+
+## D-030 Developer streaks get no protection
+The developer account follows the normal streak rules. The showcase seeds a
+streak only while its lifetime best is below the showcase value, so it is
+applied once; re-running it never refreshes, repairs or protects streaks.
+
+## D-031 XP freeze is enforced at the single XP gate
+`user_stats.xp_frozen` (migration 0005) is a role-independent progression
+setting. `awardXp` checks it: gameplay awards are written to the ledger as
+0 under `frozen:<reason>` (the idempotency key is spent, so nothing is
+paid retroactively after unfreezing) and report no XP. Manual admin
+adjustments and the showcase pass `bypassFreeze`. Completions, stats,
+streaks, mastery and achievements still count; rank follows the frozen
+total. Notifications and result toasts carry no XP while frozen.
+
+## D-032 Manual admin adjustments
+XP: `adjust-xp`, a whole non-zero amount up to ±1,000,000, through the
+ledger (reason `admin`, key `admin-xp:<requestId>` so retries apply once).
+A removal that would take the total below 0 is refused rather than clamped,
+so the ledger always sums to the total. Streaks: `adjust-streak` changes the
+value players see today (`adjustStreak` in src/lib/progression/streaks.ts).
+A live streak keeps its due date; a broken streak restarts live and due
+today, with the lapsed value repairable as on a natural fresh start; 0
+clears it; `best` never decreases. Each change writes its own audit row
+(before/after/amount/reason) inside its transaction.
+
+## D-033 Admin account deletion is a hard delete with guards
+Admins delete accounts without the target's password through the same
+`purgeUser` as self-deletion: every per-player table cascades from
+`users`; shared Daily puzzles and sets are kept; Unlimited puzzles are
+removed. The audit row is written first with a minimal snapshot (id, handle,
+display name, roles, XP; no email), then the FK nulls its target. Guards:
+retype the handle, never yourself, never `DEVELOPER.handle`, never the last
+admin. Soft-delete was rejected: the schema has no "deleted" state, and
+every query would need to learn to skip it.

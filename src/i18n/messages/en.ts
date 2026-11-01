@@ -173,6 +173,11 @@ export const en = {
     atRiskTitle: 'Streak at risk',
     atRiskBody: 'Play one Daily Set game before 00:00 UTC to keep your {count}-day streak.',
     dayStreak: 'Day Streak',
+    short: 'Streak',
+    trueShort: 'True Player',
+    header: 'Your streaks',
+    headerLabel: 'Streaks: Normal Streak {normal} days, True Player Streak {truePlayer} days',
+    utcNote: 'Days run on UTC (reset at 00:00 UTC). Unlimited games never count.',
   },
   daily: {
     title: "Today's Daily Set",
@@ -237,6 +242,7 @@ export const en = {
       firstDaily: 'First Daily game today',
       setComplete: 'Daily Set complete',
     },
+    xpFrozen: 'XP is frozen on this account. The game still counts.',
   },
   achievements: {
     title: 'Achievements',

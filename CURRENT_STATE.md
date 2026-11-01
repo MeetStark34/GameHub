@@ -1,5 +1,16 @@
 # Current state
 
+## Streak UX + admin player tools (2026-11-01)
+- Header shows both streaks (flame/orange "Streak" and crown/gold "True
+  Player") with an explainer popover; verified at 360px to desktop.
+- Developer account: no streak protection; it keeps 365/240 until the
+  normal rules change them. Showcase re-runs never touch existing streaks.
+- Admin: custom XP add/remove, custom Normal/True Player adjustment, XP
+  freeze, account deletion with confirmation; controls grouped into Player
+  progression / Account / Roles & badges. Every action audited.
+- Migration 0005 applied to Supabase. Gates: lint, typecheck,
+  138 unit/integration, 5 live, 19 E2E, build: all passing.
+
 ## Repair (2026-11-01): Supabase gameplay fixed
 - Root cause of `puzzle.waypoints is not iterable`: postgres.js double-encoded
   every jsonb write (puzzles, session state, results, notifications) on
@@ -88,4 +99,4 @@ by Supabase; see AI_HANDOFF).
 None known.
 
 ## Migrations
-`0001_init`, `0002_phase22`.
+`0001_init` … `0005_xp_freeze` (all applied to Supabase).

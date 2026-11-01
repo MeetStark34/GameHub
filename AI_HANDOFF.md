@@ -32,6 +32,14 @@ then `docs/DAILY.md` and `docs/I18N.md` for the Phase 22 systems.
   raw objects to `db.query` for jsonb columns.
 - E2E never uses `.env.local` (DATABASE_URL pinned empty in playwright.config.ts).
 
+## Streak + admin notes (2026-11-01)
+- All XP goes through `awardXp`; pass `bypassFreeze` only for deliberate
+  admin grants. Never write `user_stats.total_xp` directly.
+- Manual streak changes go through `adjustStreak`; never write
+  `streaks.last_date` by hand.
+- Admin deletion: `purgeUser`; new per-user tables need
+  `on delete cascade` from users.
+
 ## Next tasks
 1. **Supabase**: reset the database password (Project Settings → Database),
    put it in `.env.local` as `DATABASE_URL` (direct connection, port 5432),
@@ -56,4 +64,4 @@ then `docs/DAILY.md` and `docs/I18N.md` for the Phase 22 systems.
   in `getLeaderboard`.
 
 ## Tests
-114 unit/integration, 13 E2E, all passing.
+138 unit/integration, 5 live (opt-in), 19 E2E, all passing.

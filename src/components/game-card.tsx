@@ -27,7 +27,7 @@ export function DailyGameCard({ game, status, score, durationMs }: { game: GameI
   return (
     <Link
       href={`/play/${game}?mode=daily`}
-      className={cn('group flex items-center gap-3 rounded-2xl border bg-card p-3 transition hover:-translate-y-0.5 hover:shadow-md', done ? 'border-success/40' : 'border-border')}
+      className={cn('group flex min-w-0 items-center gap-3 rounded-2xl border bg-card p-3 transition hover:-translate-y-0.5 hover:shadow-md', done ? 'border-success/40' : 'border-border')}
     >
       <GameTile game={game} />
       <span className="min-w-0 flex-1">

@@ -64,6 +64,7 @@ const emptyStats = (userId: string): StatsRow => ({
   cards_earned: 0,
   cards_converted: 0,
   cards_used: 0,
+  xp_frozen: false,
 });
 
 export async function loadMastery(db: Queryable, userId: string): Promise<{ entries: MasteryEntry[]; overall: RankInfo }> {

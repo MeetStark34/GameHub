@@ -38,10 +38,10 @@ export function UserMenu({ user }: { user: HeaderUser }) {
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-haspopup="menu"
-        className="flex items-center gap-1.5 rounded-xl p-1 pr-2 hover:bg-subtle"
+        className="flex items-center gap-1.5 rounded-xl p-1 hover:bg-subtle sm:pr-2"
       >
         <span className="grid size-8 place-items-center rounded-lg bg-elevated font-display text-sm font-bold uppercase">{user.displayName.slice(0, 1)}</span>
-        <ChevronDown className="size-4 text-muted" aria-hidden />
+        <ChevronDown className="hidden size-4 text-muted sm:block" aria-hidden />
         <span className="sr-only">{t('nav.accountMenu')}</span>
       </button>
       {open && (

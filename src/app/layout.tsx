@@ -15,6 +15,9 @@ import { getPreferences } from '@/server/account';
 import { currentUser, isAdmin } from '@/server/auth';
 import { siteUrl } from '@/server/request';
 import { rankFromXp } from '@/lib/progression/ranks';
+import { viewStreak } from '@/lib/progression/streaks';
+import { toUtcDate } from '@/lib/time';
+import { loadStreak } from '@/server/progress';
 import { PLAYER_RANKS } from '@/config/ranks';
 import './globals.css';
 
@@ -57,14 +60,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   let headerUser: HeaderUser | null = null;
   if (user) {
-    const row = await maybeOne<{ total_xp: number; unread: number; streak: number }>(
+    const row = await maybeOne<{ total_xp: number; unread: number }>(
       db,
       `select coalesce((select total_xp from user_stats where user_id = $1), 0) total_xp,
-         (select count(*)::int from notifications where user_id = $1 and read_at is null) unread,
-         coalesce((select case when last_date >= to_char((now() at time zone 'utc')::date - 1, 'YYYY-MM-DD') then current else 0 end
-                   from streaks where user_id = $1 and kind = 'normal'), 0) streak`,
+         (select count(*)::int from notifications where user_id = $1 and read_at is null) unread`,
       [user.id],
     );
+    // Same rules as the dashboard: a streak shows 0 once its UTC day has been missed.
+    const today = toUtcDate(new Date());
+    const streak = async (kind: 'normal' | 'true_player') => {
+      const v = viewStreak(await loadStreak(db, user.id, kind), today);
+      return { current: v.current, best: v.best, status: v.status };
+    };
     const rank = rankFromXp(row?.total_xp ?? 0, PLAYER_RANKS);
     headerUser = {
       handle: user.handle,
@@ -75,7 +82,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       rankLabel: rank.label,
       level: rank.level,
       unread: row?.unread ?? 0,
-      streak: row?.streak ?? 0,
+      streaks: { normal: await streak('normal'), truePlayer: await streak('true_player') },
     };
   }
   const htmlLang = LOCALES.find((l) => l.code === locale)?.htmlLang ?? 'en';

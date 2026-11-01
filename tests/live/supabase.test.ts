@@ -11,7 +11,9 @@ import { DEVELOPER } from '@/config/site';
 import { postgresClientOptions, wrapPostgres, type Db } from '@/lib/db';
 import { isValidClientPuzzle } from '@/games/client-schemas';
 import { DIFFICULTIES, GAME_IDS } from '@/games/types';
+import { runAdminAction } from '@/server/admin';
 import { applyBootstrapAdmin } from '@/server/bootstrap';
+import { applyDeveloperShowcase } from '@/server/developer';
 import { actOnSession, startSession } from '@/server/play';
 import { BOARD_IDS, getLeaderboard, getPublicProfile } from '@/server/queries';
 import { winningActionsFor } from '@/server/solutions';
@@ -61,7 +63,7 @@ describe.skipIf(!LIVE || !url)('live database (rolled back)', () => {
   it('schema is migrated and every stored json value is a JSON document, not a string', async () => {
     await inRolledBackTx(async (db) => {
       const versions = (await db.query<{ version: string }>('select version from schema_migrations order by 1')).map((r) => r.version);
-      expect(versions).toEqual(expect.arrayContaining(['0001_init', '0002_phase22', '0003_repair_json_encoding']));
+      expect(versions).toEqual(expect.arrayContaining(['0001_init', '0002_phase22', '0003_repair_json_encoding', '0004_lock_schema_migrations', '0005_xp_freeze']));
       const bad = await db.query<{ t: string; n: number }>(
         `select 'puzzles.data' t, count(*)::int n from puzzles where jsonb_typeof(data) = 'string'
          union all select 'game_sessions.state', count(*)::int from game_sessions where jsonb_typeof(state) = 'string'
@@ -150,6 +152,73 @@ describe.skipIf(!LIVE || !url)('live database (rolled back)', () => {
         }
       } finally {
         process.env.GAMEHUB_BOOTSTRAP_ADMINS = prev;
+      }
+    });
+  }, 120_000);
+
+  it('admin XP / streak / freeze / delete tools work on Postgres', async () => {
+    await inRolledBackTx(async (db) => {
+      const now = new Date();
+      const pw = 'a-long-test-password';
+      const actor = await signUp(db, { email: 'live-admin@example.invalid', password: pw, handle: 'live-admin', displayName: 'Live Admin' }, null);
+      const target = await signUp(db, { email: 'live-target@example.invalid', password: pw, handle: 'live-target', displayName: 'Live Target' }, null);
+      await db.query(`insert into user_roles (user_id, role) values ($1, 'admin')`, [actor.id]);
+      const xp = async () => (await db.query<{ total_xp: number }>('select total_xp from user_stats where user_id = $1', [target.id]))[0].total_xp;
+
+      await runAdminAction(db, actor.id, { action: 'adjust-xp', userId: target.id, amount: 5000, reason: 'live check' }, now);
+      const added = await xp();
+      expect(added).toBeGreaterThanOrEqual(5000);
+      await runAdminAction(db, actor.id, { action: 'adjust-xp', userId: target.id, amount: -1000 }, now);
+      expect(await xp()).toBe(added - 1000);
+      await expect(runAdminAction(db, actor.id, { action: 'adjust-xp', userId: target.id, amount: -1_000_000 }, now)).rejects.toThrow(/Cannot remove/);
+
+      expect(await runAdminAction(db, actor.id, { action: 'adjust-streak', userId: target.id, kind: 'normal', amount: 5 }, now)).toEqual({ before: 0, after: 5 });
+      expect(await runAdminAction(db, actor.id, { action: 'adjust-streak', userId: target.id, kind: 'true_player', amount: 3 }, now)).toEqual({ before: 0, after: 3 });
+
+      // (Reaching a 5-day streak unlocks "On a Roll" and its XP, like any achievement.)
+      await runAdminAction(db, actor.id, { action: 'set-xp-frozen', userId: target.id, on: true }, now);
+      const frozenAt = await xp();
+      const v = await startSession(db, { userId: target.id, game: 'queens', mode: 'daily', now });
+      const done = await solve(db, target.id, v.id, new Date(now.getTime() + 120_000));
+      expect(done.completion).toMatchObject({ xpGained: 0, xpFrozen: true });
+      expect(done.completion!.streaks.normal).toBe(6); // the game still counts for the streak
+      expect(await xp()).toBe(frozenAt);
+
+      const audit = await db.query<{ action: string; details: Record<string, unknown> }>(
+        `select action, details from admin_audit_log where actor_id = $1 order by created_at`,
+        [actor.id],
+      );
+      expect(audit.map((a) => a.action)).toEqual(['xp-add', 'xp-remove', 'streak-adjust', 'streak-adjust', 'xp-freeze']);
+      expect(audit.every((a) => typeof a.details === 'object')).toBe(true); // jsonb document, not a string
+
+      await runAdminAction(db, actor.id, { action: 'delete-account', userId: target.id, confirmHandle: 'live-target' }, now);
+      expect(await db.query('select 1 from users where id = $1', [target.id])).toHaveLength(0);
+      expect(await db.query('select 1 from xp_ledger where user_id = $1', [target.id])).toHaveLength(0);
+      const del = await db.query<{ target_user_id: string | null; details: { handle: string } }>(
+        `select target_user_id, details from admin_audit_log where actor_id = $1 and action = 'delete-account'`,
+        [actor.id],
+      );
+      expect(del).toEqual([{ target_user_id: null, details: expect.objectContaining({ handle: 'live-target' }) }]);
+    });
+  }, 120_000);
+
+  it('the existing developer account keeps its streaks: re-running the showcase changes nothing', async () => {
+    await inRolledBackTx(async (db) => {
+      const read = () =>
+        db.query<{ kind: string; current: number; best: number; last_date: string | null }>(
+          'select s.kind, s.current, s.best, s.last_date from streaks s join users u on u.id = s.user_id where u.handle = $1 order by s.kind',
+          [DEVELOPER.handle],
+        );
+      const before = await read();
+      if (!before.length) return; // no developer account in this database
+      expect(before.find((s) => s.kind === 'normal')!.best).toBeGreaterThanOrEqual(DEVELOPER.showcase.normalStreak);
+      expect(before.find((s) => s.kind === 'true_player')!.best).toBeGreaterThanOrEqual(DEVELOPER.showcase.truePlayerStreak);
+      await applyDeveloperShowcase(db, new Date());
+      expect(await read()).toEqual(before);
+      // Still excluded from every public board.
+      for (const board of BOARD_IDS) {
+        const lb = await getLeaderboard(db, board, { now: new Date(), viewerId: null });
+        expect(lb.rows.some((r) => r.handle === DEVELOPER.handle), board).toBe(false);
       }
     });
   }, 120_000);

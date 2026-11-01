@@ -43,6 +43,8 @@ export interface CompletionResult {
   score: number;
   perfect: boolean;
   xpGained: number;
+  /** True when an admin froze this account's XP: the game counted, but earned no XP. */
+  xpFrozen?: boolean;
   breakdown: { label: string; amount: number }[];
   totalXp: number;
   rank: { before: string; after: string; levelUp: boolean; progress: number; nextLabel: string | null };

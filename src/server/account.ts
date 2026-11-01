@@ -88,11 +88,20 @@ export async function deleteAccount(db: Db, userId: string, confirm: { handle: s
   if (confirm.handle.trim().toLowerCase() !== user.handle) throw new AuthError('errors.confirmHandle');
   if (!user.is_guest && !(confirm.password && user.password_hash && (await verifyPassword(confirm.password, user.password_hash))))
     throw new AuthError('errors.wrongPassword', 403);
-  await db.tx(async (tx) => {
-    // Puzzles for Unlimited sessions are personal; Daily puzzles are shared and kept.
-    const puzzles = await tx.query<{ puzzle_id: string }>(`select puzzle_id from game_sessions where user_id = $1 and mode = 'unlimited'`, [userId]);
-    await tx.query('delete from users where id = $1', [userId]);
-    if (puzzles.length)
-      await tx.query(`delete from puzzles where mode = 'unlimited' and id = any($1::uuid[])`, [puzzles.map((p) => p.puzzle_id)]);
-  });
+  await db.tx((tx) => purgeUser(tx, userId));
+}
+
+/**
+ * Hard-deletes a user inside the caller's transaction. Every per-player
+ * table (sessions, completions, XP ledger, stats, streaks, cards, mastery,
+ * achievements, notifications, roles, badges, preferences, auth sessions,
+ * password resets) cascades from users. Shared data is kept: Daily puzzles
+ * and Daily Sets belong to everyone, and admin_audit_log rows survive with
+ * their user references set to null. Unlimited puzzles are personal, so
+ * they are removed too.
+ */
+export async function purgeUser(tx: Queryable, userId: string) {
+  const puzzles = await tx.query<{ puzzle_id: string }>(`select puzzle_id from game_sessions where user_id = $1 and mode = 'unlimited'`, [userId]);
+  await tx.query('delete from users where id = $1', [userId]);
+  if (puzzles.length) await tx.query(`delete from puzzles where mode = 'unlimited' and id = any($1::uuid[])`, [puzzles.map((p) => p.puzzle_id)]);
 }

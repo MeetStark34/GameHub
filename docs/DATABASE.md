@@ -64,3 +64,26 @@ cleanup of old, never-completed Unlimited sessions is not implemented yet.
 Apply to the configured database with `npm run db:migrate:env` (reads
 `.env.local`). Inspect shapes and migration state read-only with
 `npm run db:inspect` (never prints credentials or emails).
+
+## 0005_xp_freeze
+`user_stats.xp_frozen boolean not null default false`,
+`xp_freeze_changed_at timestamptz`, `xp_freeze_changed_by uuid` (references
+users, on delete set null). Additive only. History of every change is in
+`admin_audit_log` (`xp-freeze` / `xp-unfreeze`).
+
+## Admin audit actions
+`xp-add`, `xp-remove` (amount, before, after, xpFrozen, reason),
+`streak-adjust` (kind, amount, before, after, reason), `xp-freeze` /
+`xp-unfreeze` (totalXp, reason), `delete-account` (deletedUserId, handle,
+displayName, isGuest, roles, totalXp, createdAt; no email), plus the existing
+generic rows (`set-role`, `set-badge`, `grant-card`, ...). `actor_id` and
+`target_user_id` are set null if those users are later deleted; the
+snapshot in `details` keeps the row readable.
+
+## Account deletion
+`purgeUser` (src/server/account.ts) deletes the users row; these cascade:
+auth_sessions, password_resets, user_roles, user_badges, preferences,
+game_sessions (and their completions), completions, xp_ledger, user_stats,
+mastery, daily_activity, streaks, card_events, achievement_unlocks,
+notifications. Kept: puzzles used by Daily Sets, daily_sets, daily_puzzles,
+daily_puzzle_history, admin_audit_log rows (user refs set null).

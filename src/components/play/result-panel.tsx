@@ -44,6 +44,7 @@ export function ResultPanel({ result, onPlayAgain }: { result: CompletionResult;
         <section aria-label={t('result.xpEarned')}>
           <Eyebrow className="mb-2">{t('result.xpEarned')}</Eyebrow>
           <ul className="space-y-1 text-sm">
+            {result.xpFrozen && <li className="text-muted">{t('result.xpFrozen')}</li>}
             {result.breakdown.map((b) => (
               <li key={b.label} className="flex justify-between">
                 <span className="text-muted">{BREAKDOWN_KEYS[b.label] ? t(BREAKDOWN_KEYS[b.label]) : b.label}</span>

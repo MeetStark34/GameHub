@@ -79,3 +79,22 @@ admin + Developer badge + Legend showcase and leaderboard exclusion,
 surviving reload, a reopened browser and sign-out/sign-in; forged cookies
 and direct API calls are refused.
 Totals: 126 unit/integration (+3 live, opt-in), 16 E2E.
+
+## Streaks + admin tools (2026-11-01)
+`src/lib/progression/streak-adjust.test.ts`: adjustStreak rules.
+`tests/integration/admin-tools.test.ts`: developer account keeps 365/240,
+advances, breaks and repairs under the normal rules, and a showcase re-run
+changes nothing; custom XP add/remove, negative total refused, schema rejects
+0/decimals/strings/NaN/Infinity/out of range, request-id idempotency, audit
+rows; custom Normal/True Player adjustments and metadata; XP freeze (plays,
+counts, earns 0, notifications carry no XP, admin adjustment still applies,
+persists, unfreeze resumes); admin deletion (all player tables emptied,
+Daily puzzles kept, audit snapshot without email) and its guards (self,
+developer account, last admin, wrong handle).
+E2E: header shows both streaks (journey: 1/0 then 1/1; developer 365/240,
+popover, break then repair updates the header); admin UI XP, streak, freeze
+and delete flows; non-admin calls to every new action get 403; French
+popover; mobile header fits with no overflow.
+Live: admin tools on Postgres, and the real developer account's streaks are
+unchanged by a showcase re-run (rolled back).
+Totals: 138 unit/integration (+5 live, opt-in), 19 E2E.

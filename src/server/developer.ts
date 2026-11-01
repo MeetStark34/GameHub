@@ -13,7 +13,8 @@ import { awardXp, ensureStats, saveStreak } from './progress';
  * Everything is written through the normal tables: XP goes through the
  * ledger, so rank is still computed from XP like every other player. The
  * account is excluded from public leaderboards so its numbers never
- * distort competition. Safe to re-run: values are topped up, not added.
+ * distort competition. Safe to re-run: values are topped up, not added,
+ * and streaks are only seeded on first application (see below).
  */
 export async function applyDeveloperShowcase(db: Db, now: Date) {
   const S = DEVELOPER.showcase;
@@ -26,7 +27,7 @@ export async function applyDeveloperShowcase(db: Db, now: Date) {
     await tx.query(`insert into user_badges (user_id, badge) values ($1, 'developer') on conflict do nothing`, [user.id]);
 
     const delta = S.targetXp - stats.total_xp;
-    if (delta > 0) await awardXp(tx, user.id, delta, 'developer-showcase', `showcase:${now.toISOString()}`);
+    if (delta > 0) await awardXp(tx, user.id, delta, 'developer-showcase', `showcase:${now.toISOString()}`, { bypassFreeze: true });
 
     const games = S.gamesPerGame * GAME_IDS.length;
     const perDiff = Math.floor(games / 4);
@@ -48,8 +49,18 @@ export async function applyDeveloperShowcase(db: Db, now: Date) {
            completions = greatest(mastery.completions, excluded.completions), best_score = greatest(mastery.best_score, 1000)`,
         [user.id, game, S.masteryXpPerGame, S.gamesPerGame],
       );
-    await saveStreak(tx, user.id, 'normal', { current: S.normalStreak, best: S.normalStreak, lastDate: today, lostValue: 0, lostLastDate: null });
-    await saveStreak(tx, user.id, 'true_player', { current: S.truePlayerStreak, best: S.truePlayerStreak, lastDate: today, lostValue: 0, lostLastDate: null });
+    // Streaks are seeded once: only while a streak has never reached the
+    // showcase value (its lifetime best is below it). After that they follow
+    // the normal rules like any player's, and re-running the showcase never
+    // refreshes, repairs or protects them.
+    const best = new Map(
+      (await tx.query<{ kind: string; best: number }>('select kind, best from streaks where user_id = $1', [user.id])).map((r) => [r.kind, r.best]),
+    );
+    for (const [kind, target] of [
+      ['normal', S.normalStreak],
+      ['true_player', S.truePlayerStreak],
+    ] as const)
+      if ((best.get(kind) ?? 0) < target) await saveStreak(tx, user.id, kind, { current: target, best: target, lastDate: today, lostValue: 0, lostLastDate: null });
     // Showcase unlocks carry xp = 0: the XP total is set directly above.
     for (const a of ACHIEVEMENTS)
       await tx.query('insert into achievement_unlocks (user_id, achievement_id, xp) values ($1, $2, 0) on conflict do nothing', [user.id, a.id]);

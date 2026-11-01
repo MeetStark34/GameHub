@@ -3,8 +3,9 @@ import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
 import { ACHIEVEMENTS_BY_ID } from '@/config/achievements';
 import { REPAIR_CARDS } from '@/config/economy';
+import { DEVELOPER } from '@/config/site';
 import { maybeOne, one, type Db, type Queryable } from '@/lib/db';
-import { repairStreak } from '@/lib/progression/streaks';
+import { adjustStreak, repairStreak, viewStreak } from '@/lib/progression/streaks';
 import { createRng } from '@/lib/rng';
 import { addDays, toUtcDate } from '@/lib/time';
 import { ENGINES } from '@/games/registry';
@@ -13,6 +14,10 @@ import { actOnSession, PlayError, startSession } from './play';
 import { awardXp, ensureStats, evaluateAchievements, loadStreak, notify, saveStreak } from './progress';
 import { winningActionsFor } from './solutions';
 import { applyDeveloperShowcase } from './developer';
+import { purgeUser } from './account';
+
+/** Largest single manual XP or streak change; keeps typos (an extra zero or three) from doing real damage. */
+export const ADMIN_LIMITS = { xpPerAdjustment: 1_000_000, streakPerAdjustment: 3_650, maxTotalXp: 2_000_000_000 } as const;
 
 export const BADGES = ['developer', 'moderator', 'tester', 'founder', 'contributor'] as const;
 export const ROLES = ['admin', 'moderator'] as const;
@@ -28,9 +33,22 @@ export async function audit(db: Queryable, actorId: string, action: string, targ
 
 const uuid = z.string().uuid();
 const kind = z.enum(['normal', 'true_player']);
+const reason = z.string().trim().max(200).optional();
+/** Whole, non-zero, bounded. JSON cannot carry NaN or Infinity, and `int` rejects decimals and strings. */
+const delta = (max: number) =>
+  z
+    .number()
+    .int()
+    .min(-max)
+    .max(max)
+    .refine((n) => n !== 0, 'Amount must not be 0.');
 
 export const adminActionSchema = z.discriminatedUnion('action', [
-  z.object({ action: z.literal('grant-xp'), userId: uuid, amount: z.number().int().min(-1_000_000).max(1_000_000) }),
+  // requestId (client UUID) makes a double-click or retry apply once.
+  z.object({ action: z.literal('adjust-xp'), userId: uuid, amount: delta(ADMIN_LIMITS.xpPerAdjustment), reason, requestId: uuid.optional() }),
+  z.object({ action: z.literal('adjust-streak'), userId: uuid, kind, amount: delta(ADMIN_LIMITS.streakPerAdjustment), reason }),
+  z.object({ action: z.literal('set-xp-frozen'), userId: uuid, on: z.boolean(), reason }),
+  z.object({ action: z.literal('delete-account'), userId: uuid, confirmHandle: z.string().max(40) }),
   z.object({ action: z.literal('unlock-achievement'), userId: uuid, achievementId: z.string().max(64) }),
   z.object({ action: z.literal('complete-daily-set'), userId: uuid }),
   z.object({ action: z.literal('break-streak'), userId: uuid, kind }),
@@ -59,13 +77,63 @@ export async function runAdminAction(db: Db, actorId: string, input: AdminAction
     throw new PlayError('You cannot remove your own admin role here.', 409);
 
   let result: unknown = { ok: true };
+  // Actions that write their own, richer audit row inside their transaction.
+  let audited = false;
   switch (input.action) {
-    case 'grant-xp':
-      await db.tx(async (tx) => {
-        await ensureStats(tx, input.userId);
-        await awardXp(tx, input.userId, input.amount, 'admin', `admin:${randomUUID()}`);
-        await evaluateAchievements(tx, input.userId, today, null, []);
+    case 'adjust-xp':
+      audited = true;
+      result = await db.tx(async (tx) => {
+        const stats = await ensureStats(tx, input.userId); // row-locked
+        const before = stats.total_xp;
+        const after = before + input.amount;
+        if (after < 0) throw new PlayError(`Cannot remove ${(-input.amount).toLocaleString('en-US')} XP: the player has ${before.toLocaleString('en-US')}.`, 409);
+        if (after > ADMIN_LIMITS.maxTotalXp) throw new PlayError('That would exceed the maximum total XP.', 409);
+        // Manual adjustments go through the ledger like every award, and ignore an XP freeze.
+        const applied = await awardXp(tx, input.userId, input.amount, 'admin', `admin-xp:${input.requestId ?? randomUUID()}`, { bypassFreeze: true });
+        if (!applied) return { repeated: true, totalXp: before };
+        await audit(tx, actorId, input.amount > 0 ? 'xp-add' : 'xp-remove', input.userId, {
+          amount: input.amount,
+          before,
+          after,
+          xpFrozen: stats.xp_frozen,
+          reason: input.reason || null,
+        });
+        // Additions can satisfy XP achievements; achievements are never revoked.
+        if (input.amount > 0) await evaluateAchievements(tx, input.userId, today, null, []);
+        return { repeated: false, totalXp: (await one<{ total_xp: number }>(tx, 'select total_xp from user_stats where user_id = $1', [input.userId])).total_xp };
       });
+      break;
+    case 'adjust-streak':
+      audited = true;
+      result = await db.tx(async (tx) => {
+        const s = await loadStreak(tx, input.userId, input.kind, true);
+        const before = viewStreak(s, today).current;
+        const next = adjustStreak(s, input.amount, today);
+        if (!next) throw new PlayError(`Cannot remove ${-input.amount} days: the streak is ${before}.`, 409);
+        await saveStreak(tx, input.userId, input.kind, next);
+        const after = viewStreak(next, today).current;
+        await audit(tx, actorId, 'streak-adjust', input.userId, { kind: input.kind, amount: input.amount, before, after, reason: input.reason || null });
+        await evaluateAchievements(tx, input.userId, today, null, []);
+        return { before, after };
+      });
+      break;
+    case 'set-xp-frozen':
+      audited = true;
+      result = await db.tx(async (tx) => {
+        const stats = await ensureStats(tx, input.userId);
+        if (stats.xp_frozen === input.on) return { xpFrozen: input.on, changed: false };
+        await tx.query('update user_stats set xp_frozen = $2, xp_freeze_changed_at = now(), xp_freeze_changed_by = $3 where user_id = $1', [
+          input.userId,
+          input.on,
+          actorId,
+        ]);
+        await audit(tx, actorId, input.on ? 'xp-freeze' : 'xp-unfreeze', input.userId, { totalXp: stats.total_xp, reason: input.reason || null });
+        return { xpFrozen: input.on, changed: true };
+      });
+      break;
+    case 'delete-account':
+      audited = true;
+      result = await deleteAccountAsAdmin(db, actorId, input.userId, input.confirmHandle);
       break;
     case 'unlock-achievement': {
       const def = ACHIEVEMENTS_BY_ID.get(input.achievementId);
@@ -160,8 +228,48 @@ export async function runAdminAction(db: Db, actorId: string, input: AdminAction
       break;
     }
   }
-  await audit(db, actorId, input.action, target, input);
+  if (!audited) await audit(db, actorId, input.action, target, input);
   return result;
+}
+
+/**
+ * Administrative hard delete (no target password needed). The account and
+ * all of its player data go, through the same purge as self-deletion; the
+ * audit row survives with a minimal snapshot (no email, no secrets).
+ * Guards: never yourself, never the configured developer account, never
+ * the last admin, and the caller must retype the target's handle.
+ */
+async function deleteAccountAsAdmin(db: Db, actorId: string, userId: string, confirmHandle: string) {
+  if (userId === actorId) throw new PlayError('You cannot delete your own account from the admin dashboard.', 409);
+  return db.tx(async (tx) => {
+    const u = await maybeOne<{ id: string; handle: string; display_name: string; is_guest: boolean; created_at: Date }>(
+      tx,
+      'select id, handle, display_name, is_guest, created_at from users where id = $1 for update',
+      [userId],
+    );
+    if (!u) throw new PlayError('User not found.', 404);
+    if (confirmHandle.trim().toLowerCase().replace(/^@/, '') !== u.handle) throw new PlayError(`Type the handle @${u.handle} to confirm.`, 400);
+    if (u.handle === DEVELOPER.handle)
+      throw new PlayError(`@${u.handle} is the protected developer account. Change DEVELOPER.handle in src/config/site.ts before deleting it.`, 409);
+    const roles = (await tx.query<{ role: string }>('select role from user_roles where user_id = $1', [userId])).map((r) => r.role);
+    if (roles.includes('admin')) {
+      const admins = await tx.query(`select user_id from user_roles where role = 'admin' for update`);
+      if (admins.length <= 1) throw new PlayError('Cannot delete the last administrator.', 409);
+    }
+    const stats = await maybeOne<{ total_xp: number }>(tx, 'select total_xp from user_stats where user_id = $1', [userId]);
+    // Written before the delete; the FK then nulls target_user_id, so the snapshot keeps the record readable.
+    await audit(tx, actorId, 'delete-account', userId, {
+      deletedUserId: u.id,
+      handle: u.handle,
+      displayName: u.display_name,
+      isGuest: u.is_guest,
+      roles,
+      totalXp: stats?.total_xp ?? 0,
+      createdAt: new Date(u.created_at).toISOString(),
+    });
+    await purgeUser(tx, userId);
+    return { deleted: true, handle: u.handle };
+  });
 }
 
 export async function adminOverview(db: Queryable, now: Date) {
@@ -178,17 +286,52 @@ export async function adminOverview(db: Queryable, now: Date) {
   };
 }
 
-export async function adminSearchUsers(db: Queryable, q: string) {
+interface StreakCols {
+  current: number;
+  best: number;
+  last_date: string | null;
+  lost_value: number;
+  lost_last_date: string | null;
+}
+
+export async function adminSearchUsers(db: Queryable, q: string, now: Date) {
   const term = `%${q.trim().toLowerCase().replace(/[%_]/g, '')}%`;
-  return db.query<{ id: string; handle: string; display_name: string; email: string | null; is_guest: boolean; total_xp: number | null; roles: string[]; badges: string[]; leaderboard_excluded: boolean }>(
-    `select u.id, u.handle, u.display_name, u.email, u.is_guest, st.total_xp, u.leaderboard_excluded,
+  const today = toUtcDate(now);
+  const rows = await db.query<{
+    id: string;
+    handle: string;
+    display_name: string;
+    email: string | null;
+    is_guest: boolean;
+    total_xp: number | null;
+    cards_held: number | null;
+    xp_frozen: boolean | null;
+    xp_freeze_changed_at: Date | null;
+    roles: string[];
+    badges: string[];
+    leaderboard_excluded: boolean;
+    normal: StreakCols | null;
+    true_player: StreakCols | null;
+  }>(
+    `select u.id, u.handle, u.display_name, u.email, u.is_guest, st.total_xp, st.cards_held, st.xp_frozen, st.xp_freeze_changed_at, u.leaderboard_excluded,
        coalesce((select array_agg(role) from user_roles r where r.user_id = u.id), '{}') roles,
-       coalesce((select array_agg(badge) from user_badges b where b.user_id = u.id), '{}') badges
+       coalesce((select array_agg(badge) from user_badges b where b.user_id = u.id), '{}') badges,
+       (select row_to_json(s) from (select current, best, last_date, lost_value, lost_last_date from streaks where user_id = u.id and kind = 'normal') s) normal,
+       (select row_to_json(s) from (select current, best, last_date, lost_value, lost_last_date from streaks where user_id = u.id and kind = 'true_player') s) true_player
      from users u left join user_stats st on st.user_id = u.id
      where $1 = '%%' or u.handle like $1 or lower(coalesce(u.email, '')) like $1 or lower(u.display_name) like $1
      order by u.is_guest, u.created_at desc limit 25`,
     [term],
   );
+  const view = (s: StreakCols | null) =>
+    viewStreak(s ? { current: s.current, best: s.best, lastDate: s.last_date, lostValue: s.lost_value, lostLastDate: s.lost_last_date } : { current: 0, best: 0, lastDate: null, lostValue: 0, lostLastDate: null }, today);
+  return rows.map(({ normal, true_player, ...u }) => ({
+    ...u,
+    total_xp: u.total_xp ?? 0,
+    cards_held: u.cards_held ?? 0,
+    xp_frozen: !!u.xp_frozen,
+    streaks: { normal: view(normal), truePlayer: view(true_player) },
+  }));
 }
 
 export async function adminAuditLog(db: Queryable, limit = 50) {

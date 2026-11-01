@@ -40,6 +40,7 @@ export interface StatsRow {
   cards_earned: number;
   cards_converted: number;
   cards_used: number;
+  xp_frozen: boolean;
 }
 
 export type { RewardEvent } from '@/lib/contracts';
@@ -49,15 +50,33 @@ export async function ensureStats(tx: Queryable, userId: string): Promise<StatsR
   return one<StatsRow>(tx, 'select * from user_stats where user_id = $1 for update', [userId]);
 }
 
-/** Idempotent XP award. Returns true if it was newly applied. */
-export async function awardXp(tx: Queryable, userId: string, amount: number, reason: string, key: string): Promise<boolean> {
+export async function isXpFrozen(tx: Queryable, userId: string): Promise<boolean> {
+  return !!(await maybeOne(tx, 'select 1 from user_stats where user_id = $1 and xp_frozen', [userId]));
+}
+
+/**
+ * Idempotent XP award: the single gate every XP change goes through.
+ * Returns true if XP was newly applied. While the account's XP is frozen,
+ * gameplay awards are recorded in the ledger as 0 under `frozen:<reason>`
+ * (so the key is spent and never paid later) and return false. Manual
+ * admin adjustments pass `bypassFreeze`.
+ */
+export async function awardXp(
+  tx: Queryable,
+  userId: string,
+  amount: number,
+  reason: string,
+  key: string,
+  opts: { bypassFreeze?: boolean } = {},
+): Promise<boolean> {
   if (!amount) return false;
+  const frozen = !opts.bypassFreeze && (await isXpFrozen(tx, userId));
   const rows = await tx.query(
     `insert into xp_ledger (user_id, amount, reason, idempotency_key) values ($1, $2, $3, $4)
      on conflict (user_id, idempotency_key) do nothing returning id`,
-    [userId, Math.round(amount), reason, key],
+    [userId, frozen ? 0 : Math.round(amount), frozen ? `frozen:${reason}` : reason, key],
   );
-  if (!rows.length) return false;
+  if (!rows.length || frozen) return false;
   await tx.query('update user_stats set total_xp = greatest(0, total_xp + $2), xp_updated_at = now() where user_id = $1', [
     userId,
     Math.round(amount),
@@ -66,12 +85,14 @@ export async function awardXp(tx: Queryable, userId: string, amount: number, rea
 }
 
 export async function notify(tx: Queryable, userId: string, e: RewardEvent): Promise<void> {
+  // A frozen account earned no XP, so its notifications must not claim any.
+  const xp = e.xp && !(await isXpFrozen(tx, userId)) ? e.xp : null;
   await tx.query('insert into notifications (user_id, kind, title, body, data) values ($1, $2, $3, $4, $5::jsonb)', [
     userId,
     e.kind,
     e.title,
     e.body,
-    JSON.stringify({ ...(e.data ?? {}), xp: e.xp ?? null, i18n: e.i18n ?? null }),
+    JSON.stringify({ ...(e.data ?? {}), xp, i18n: e.i18n ?? null }),
   ]);
 }
 

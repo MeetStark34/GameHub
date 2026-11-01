@@ -12,11 +12,14 @@ export function LogoMark({ className = 'size-7' }: { className?: string }) {
   );
 }
 
-export function Wordmark() {
+/** `compact`: logo mark only on phones, so the header keeps room for its controls. */
+export function Wordmark({ compact = false }: { compact?: boolean }) {
   return (
     <span className="flex items-center gap-2 font-display text-lg font-bold tracking-tight">
       <LogoMark />
-      Game<span className="-ml-2 text-accent">Hub</span>
+      <span className={compact ? 'hidden sm:inline' : undefined}>
+        Game<span className="text-accent">Hub</span>
+      </span>
     </span>
   );
 }

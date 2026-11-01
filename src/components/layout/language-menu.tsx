@@ -17,7 +17,7 @@ export function LanguageMenu({ align = 'right' }: { align?: 'right' | 'left' }) 
       trigger={
         <>
           <Languages className="size-4 text-accent" aria-hidden />
-          <span className="uppercase">{current.code}</span>
+          <span className="hidden uppercase sm:inline">{current.code}</span>
         </>
       }
     >

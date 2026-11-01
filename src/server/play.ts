@@ -507,14 +507,16 @@ async function processCompletion(tx: Queryable, s: SessionRow, durationMs: numbe
     score,
     perfect,
     xpGained: after.total_xp - before.total_xp,
-    breakdown,
+    ...(before.xp_frozen && { xpFrozen: true }),
+    // Frozen accounts earn nothing, so there is nothing to itemise.
+    breakdown: before.xp_frozen ? [] : breakdown,
     totalXp: after.total_xp,
     rank: { before: rankBefore.label, after: rankAfter.label, levelUp: rankAfter.level > rankBefore.level, progress: rankAfter.progress, nextLabel: rankAfter.nextLabel },
     mastery: { before: mBefore.label, after: mAfter.label, xp: mastery.xp, rankUp: mAfter.rankIndex > mBefore.rankIndex },
     streaks: { normal: normal.current, truePlayer: truePlayer.current, normalAdvanced: normal.advanced, truePlayerAdvanced: truePlayer.advanced },
     daily,
     achievements,
-    events,
+    events: before.xp_frozen ? events.map((e) => ({ ...e, xp: undefined })) : events,
   };
 
   await tx.query(

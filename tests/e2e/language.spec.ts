@@ -35,6 +35,19 @@ test.describe('language', () => {
     await expect(page.getByText('Mot absent de la liste.')).toBeVisible();
   });
 
+  test('header streak explainer is translated', async ({ page, context }) => {
+    await context.addCookies([{ name: 'gh-lang', value: 'fr', url: 'http://localhost:3200' }]);
+    const started = page.waitForResponse((r) => r.url().endsWith('/api/play/start'));
+    await page.goto('/play/queens?mode=unlimited&difficulty=easy'); // creates a guest
+    await started;
+    await page.goto('/dashboard');
+    await page.getByRole('button', { name: /^Séries : série normale 0 jours, série True Player 0 jours$/ }).click();
+    const dialog = page.getByRole('dialog', { name: /^Séries/ });
+    await expect(dialog.getByText('Vos séries')).toBeVisible();
+    await expect(dialog.getByText('Série normale', { exact: true })).toBeVisible();
+    await expect(dialog.getByText(/Illimité ne compte jamais/)).toBeVisible();
+  });
+
   test('browser language is used only as the first-visit fallback', async ({ browser }) => {
     const ctx = await browser.newContext({ locale: 'ru-RU' });
     const page = await ctx.newPage();

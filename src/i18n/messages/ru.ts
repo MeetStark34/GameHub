@@ -162,6 +162,11 @@ export const ru: Translation = {
     atRiskTitle: 'Серия под угрозой',
     atRiskBody: 'Сыграйте в одну игру Daily Set до 00:00 UTC, чтобы сохранить серию из {count} дн.',
     dayStreak: 'Серия дней',
+    short: 'Серия',
+    trueShort: 'True Player',
+    header: 'Ваши серии',
+    headerLabel: 'Серии: обычная серия {normal} дн., серия True Player {truePlayer} дн.',
+    utcNote: 'Дни считаются по UTC (сброс в 00:00 UTC). Безлимитные игры не учитываются.',
   },
   daily: {
     title: 'Сегодняшний Daily Set',
@@ -222,6 +227,7 @@ export const ru: Translation = {
       firstDaily: 'Первая игра Daily сегодня',
       setComplete: 'Daily Set пройден',
     },
+    xpFrozen: 'XP этого аккаунта заморожен. Игра всё равно засчитана.',
   },
   achievements: {
     title: 'Достижения',

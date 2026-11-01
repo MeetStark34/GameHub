@@ -163,6 +163,11 @@ export const fr: Translation = {
     atRiskTitle: 'Série en danger',
     atRiskBody: 'Jouez une partie du Daily Set avant 00:00 UTC pour garder votre série de {count} jours.',
     dayStreak: 'Série de jours',
+    short: 'Série',
+    trueShort: 'True Player',
+    header: 'Vos séries',
+    headerLabel: 'Séries : série normale {normal} jours, série True Player {truePlayer} jours',
+    utcNote: 'Les jours suivent l’heure UTC (réinitialisation à 00:00 UTC). Le mode Illimité ne compte jamais.',
   },
   daily: {
     title: 'Daily Set du jour',
@@ -223,6 +228,7 @@ export const fr: Translation = {
       firstDaily: 'Première partie Daily du jour',
       setComplete: 'Daily Set terminé',
     },
+    xpFrozen: 'L’XP de ce compte est gelée. La partie compte quand même.',
   },
   achievements: {
     title: 'Succès',
