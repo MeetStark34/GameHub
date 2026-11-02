@@ -1,7 +1,7 @@
 import 'server-only';
 import { cookies, headers } from 'next/headers';
 import { cache } from 'react';
-import { getDb, maybeOne } from '@/lib/db';
+import { requestPreferences } from '@/server/account';
 import { currentUser } from '@/server/auth';
 import { DEFAULT_LOCALE, isLocale, LOCALE_COOKIE, localeFromAcceptLanguage, type Locale } from './config';
 import { MESSAGES } from './messages';
@@ -17,7 +17,7 @@ export const getLocale = cache(async (): Promise<Locale> => {
   if (isLocale(fromCookie)) return fromCookie;
   const user = await currentUser();
   if (user) {
-    const pref = await maybeOne<{ language: string | null }>(await getDb(), 'select language from preferences where user_id = $1', [user.id]);
+    const pref = await requestPreferences(user.id);
     if (isLocale(pref?.language)) return pref.language;
   }
   return localeFromAcceptLanguage((await headers()).get('accept-language')) ?? DEFAULT_LOCALE;

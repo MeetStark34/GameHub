@@ -64,4 +64,4 @@ then `docs/DAILY.md` and `docs/I18N.md` for the Phase 22 systems.
   in `getLeaderboard`.
 
 ## Tests
-138 unit/integration, 5 live (opt-in), 19 E2E, all passing.
+141 unit/integration, 5 live (opt-in), 19 E2E, all passing.

@@ -1,5 +1,20 @@
 # Current state
 
+## Performance audit (2026-11-02)
+Measured on a production build against Postgres 16 with a simulated 30 ms
+database round trip (Vercel to Supabase pooler):
+- Dashboard TTFB 440 ms -> 115 ms; `/api/me/summary` 490 ms -> 70 ms;
+  `/daily` 430 ms -> 120 ms; `/play/*` 245 ms -> 90 ms.
+- Dashboard database queries 19 -> 16, sequential round trips about 13 -> 3.
+- Fixes: `getPlayerSummary` and `getPublicProfile` issue independent reads
+  with `Promise.all`; the root layout loads header data concurrently; one
+  request-memoised preferences query (`requestPreferences`) serves both
+  locale and theme; `loadStreaks` reads both streaks in one query.
+  Rendered HTML and API JSON were byte-identical before and after.
+- Not changed: Link prefetches on the Dashboard (~30 requests, ~2 queries
+  each for visitors without a `gh-locale` cookie, from `generateMetadata`)
+  and the client JS (~168 KB gzip, mostly React/Next framework).
+
 ## Streak UX + admin player tools (2026-11-01)
 - Header shows both streaks (flame/orange "Streak" and crown/gold "True
   Player") with an explainer popover; verified at 360px to desktop.

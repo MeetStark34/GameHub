@@ -9,7 +9,7 @@ import { viewStreak, type StreakView } from '@/lib/progression/streaks';
 import { addDays, nextUtcMidnight, toUtcDate, utcWeekStart } from '@/lib/time';
 import { GAME_IDS, type Difficulty, type GameId, type GameMode } from '@/games/types';
 import { dailyDifficultyFor } from './play';
-import { loadAchievementStats, loadStreak, type StatsRow } from './progress';
+import { loadAchievementStats, loadStreaks, type StatsRow } from './progress';
 
 export interface MasteryEntry {
   game: GameId;
@@ -91,21 +91,37 @@ export async function loadMastery(db: Queryable, userId: string): Promise<{ entr
 
 export async function getPlayerSummary(db: Queryable, userId: string, now: Date): Promise<PlayerSummary> {
   const today = toUtcDate(now);
-  const user = await maybeOne<{ id: string; handle: string; display_name: string; is_guest: boolean; title: string | null }>(
-    db,
-    'select id, handle, display_name, is_guest, title from users where id = $1',
-    [userId],
-  );
+  // Independent reads: issued together so the page waits for one round trip
+  // to the database (bounded by the pool size) instead of eleven in a row.
+  const [user, statsRow, streaks, sessions, activity, mastery, unlocked, unread, recent, badges] = await Promise.all([
+    maybeOne<{ id: string; handle: string; display_name: string; is_guest: boolean; title: string | null }>(
+      db,
+      'select id, handle, display_name, is_guest, title from users where id = $1',
+      [userId],
+    ),
+    maybeOne<StatsRow>(db, 'select * from user_stats where user_id = $1', [userId]),
+    loadStreaks(db, userId),
+    db.query<{ game: GameId; status: string; score: number | null; duration_ms: number | null }>(
+      `select s.game, s.status, c.score, c.duration_ms from game_sessions s left join completions c on c.session_id = s.id
+       where s.user_id = $1 and s.mode = 'daily' and s.daily_date = $2`,
+      [userId, today],
+    ),
+    maybeOne<{ games_completed: number }>(db, 'select games_completed from daily_activity where user_id = $1 and utc_date = $2', [userId, today]),
+    loadMastery(db, userId),
+    maybeOne<{ n: number }>(db, 'select count(*)::int n from achievement_unlocks where user_id = $1', [userId]),
+    maybeOne<{ n: number }>(db, 'select count(*)::int n from notifications where user_id = $1 and read_at is null', [userId]),
+    db.query<{ game: GameId; mode: GameMode; difficulty: Difficulty; score: number; duration_ms: number; xp_awarded: number; completed_at: Date }>(
+      `select game, mode, difficulty, score, duration_ms, xp_awarded, completed_at from completions where user_id = $1 order by completed_at desc limit 8`,
+      [userId],
+    ),
+    db.query<{ badge: string }>('select badge from user_badges where user_id = $1 order by granted_at', [userId]),
+  ]);
   if (!user) throw new Error('User not found');
-  const stats = (await maybeOne<StatsRow>(db, 'select * from user_stats where user_id = $1', [userId])) ?? emptyStats(userId);
-  const normal = viewStreak(await loadStreak(db, userId, 'normal'), today);
-  const truePlayer = viewStreak(await loadStreak(db, userId, 'true_player'), today);
+  const stats = statsRow ?? emptyStats(userId);
+  const normal = viewStreak(streaks.normal, today);
+  const truePlayer = viewStreak(streaks.true_player, today);
+  const { entries, overall } = mastery;
 
-  const sessions = await db.query<{ game: GameId; status: string; score: number | null; duration_ms: number | null }>(
-    `select s.game, s.status, c.score, c.duration_ms from game_sessions s left join completions c on c.session_id = s.id
-     where s.user_id = $1 and s.mode = 'daily' and s.daily_date = $2`,
-    [userId, today],
-  );
   const byGame = new Map(sessions.map((s) => [s.game, s]));
   const games: DailyGameStatus[] = GAME_IDS.map((game) => {
     const s = byGame.get(game);
@@ -116,20 +132,6 @@ export async function getPlayerSummary(db: Queryable, userId: string, now: Date)
       durationMs: s?.duration_ms ?? null,
     };
   });
-  const activity = await maybeOne<{ games_completed: number }>(
-    db,
-    'select games_completed from daily_activity where user_id = $1 and utc_date = $2',
-    [userId, today],
-  );
-  const { entries, overall } = await loadMastery(db, userId);
-  const unlocked = await maybeOne<{ n: number }>(db, 'select count(*)::int n from achievement_unlocks where user_id = $1', [userId]);
-  const unread = await maybeOne<{ n: number }>(db, 'select count(*)::int n from notifications where user_id = $1 and read_at is null', [userId]);
-  const recent = await db.query<{ game: GameId; mode: GameMode; difficulty: Difficulty; score: number; duration_ms: number; xp_awarded: number; completed_at: Date }>(
-    `select game, mode, difficulty, score, duration_ms, xp_awarded, completed_at from completions where user_id = $1 order by completed_at desc limit 8`,
-    [userId],
-  );
-  const badges = await db.query<{ badge: string }>('select badge from user_badges where user_id = $1 order by granted_at', [userId]);
-
   return {
     user: { id: user.id, handle: user.handle, displayName: user.display_name, isGuest: user.is_guest, title: user.title },
     xp: stats.total_xp,
@@ -238,13 +240,17 @@ export async function getPublicProfile(db: Queryable, handle: string, viewerId: 
   const isOwner = viewerId === user.id;
   if (!isOwner && (!user.profile_public || user.is_guest)) return null;
   const today = toUtcDate(now);
-  const stats = (await maybeOne<StatsRow>(db, 'select * from user_stats where user_id = $1', [user.id])) ?? emptyStats(user.id);
-  const { entries, overall } = await loadMastery(db, user.id);
-  const badges = await db.query<{ badge: string }>('select badge from user_badges where user_id = $1 order by granted_at', [user.id]);
-  const unlocks = await db.query<{ achievement_id: string; unlocked_at: Date }>(
-    'select achievement_id, unlocked_at from achievement_unlocks where user_id = $1 order by unlocked_at desc',
-    [user.id],
-  );
+  const [statsRow, { entries, overall }, badges, unlocks, streaks] = await Promise.all([
+    maybeOne<StatsRow>(db, 'select * from user_stats where user_id = $1', [user.id]),
+    loadMastery(db, user.id),
+    db.query<{ badge: string }>('select badge from user_badges where user_id = $1 order by granted_at', [user.id]),
+    db.query<{ achievement_id: string; unlocked_at: Date }>(
+      'select achievement_id, unlocked_at from achievement_unlocks where user_id = $1 order by unlocked_at desc',
+      [user.id],
+    ),
+    loadStreaks(db, user.id),
+  ]);
+  const stats = statsRow ?? emptyStats(user.id);
   const defs = new Map(ACHIEVEMENTS.map((a) => [a.id, a]));
   return {
     handle: user.handle,
@@ -254,8 +260,8 @@ export async function getPublicProfile(db: Queryable, handle: string, viewerId: 
     memberSince: new Date(user.created_at).toISOString(),
     xp: stats.total_xp,
     rank: rankFromXp(stats.total_xp, PLAYER_RANKS),
-    normalStreak: viewStreak(await loadStreak(db, user.id, 'normal'), today),
-    truePlayerStreak: viewStreak(await loadStreak(db, user.id, 'true_player'), today),
+    normalStreak: viewStreak(streaks.normal, today),
+    truePlayerStreak: viewStreak(streaks.true_player, today),
     truePlayerDays: stats.true_player_days,
     gamesCompleted: stats.games_completed,
     mastery: entries,

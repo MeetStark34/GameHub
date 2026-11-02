@@ -116,6 +116,16 @@ export async function loadStreak(tx: Queryable, userId: string, kind: StreakKind
   return toState(row);
 }
 
+/** Both streaks in one round trip (read-only views: no row locks). */
+export async function loadStreaks(db: Queryable, userId: string): Promise<Record<StreakKind, StreakState>> {
+  const rows = await db.query<StreakRow & { kind: StreakKind }>(
+    'select kind, current, best, last_date, lost_value, lost_last_date from streaks where user_id = $1',
+    [userId],
+  );
+  const byKind = new Map(rows.map((r) => [r.kind, r]));
+  return { normal: toState(byKind.get('normal') ?? null), true_player: toState(byKind.get('true_player') ?? null) };
+}
+
 export async function saveStreak(tx: Queryable, userId: string, kind: StreakKind, s: StreakState): Promise<void> {
   await tx.query(
     `insert into streaks (user_id, kind, current, best, last_date, lost_value, lost_last_date, updated_at)
