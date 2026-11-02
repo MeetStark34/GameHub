@@ -2,7 +2,8 @@ import 'server-only';
 import { z } from 'zod';
 import { THEME_IDS } from '@/config/themes';
 import { LOCALES } from '@/i18n/config';
-import { maybeOne, type Db, type Queryable } from '@/lib/db';
+import { cache } from 'react';
+import { getDb, maybeOne, type Db, type Queryable } from '@/lib/db';
 import { AuthError, verifyPassword } from './users';
 
 export const settingsSchema = z
@@ -47,6 +48,12 @@ export async function updateSettings(db: Db, userId: string, input: SettingsInpu
 export async function getPreferences(db: Queryable, userId: string) {
   return maybeOne<{ theme: string; sound_enabled: boolean; language: string | null }>(db, 'select theme, sound_enabled, language from preferences where user_id = $1', [userId]);
 }
+
+/**
+ * Preferences for the current render, memoised per request: the root layout
+ * (theme, sound) and locale resolution (language) share one query.
+ */
+export const requestPreferences = cache(async (userId: string) => getPreferences(await getDb(), userId));
 
 /** Everything we store about a player, as JSON. Password hashes and session ids are excluded. */
 export async function exportUserData(db: Queryable, userId: string) {
