@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 300" width="1280" height="300" role="img" aria-label="The eight GameHub games: Patches, Mini Sudoku, Zip, Werd, Pinpoint, Crossclimb, Tango and Queens">
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .tile { fill: #16171B; stroke: #2F3240; stroke-width: 2; }
+    .ring { fill: none; stroke: #7383FF; stroke-width: 3; opacity: 0; animation: ring 8s ease-in-out infinite both; }
+    .name { font-size: 26px; font-weight: 700; fill: #FFFFFF; }
+    .ico { fill: none; stroke-width: 5; stroke-linecap: round; stroke-linejoin: round; }
+    @keyframes ring {
+      0%, 14%, 100% { opacity: 0; }
+      5%, 9% { opacity: 1; }
+    }
+    @media (prefers-reduced-motion: reduce) { .ring { animation: none; } }
+  </style>
+
+  <!-- Patches -->
+  <g transform="translate(20 20)">
+    <rect class="tile" width="295" height="120" rx="22"/>
+    <rect class="ring" width="295" height="120" rx="22" style="animation-delay:0s"/>
+    <g transform="translate(30 32)">
+      <rect width="26" height="26" rx="5" fill="#FF7A90"/>
+      <rect x="30" width="26" height="26" rx="5" fill="#FFC857"/>
+      <rect y="30" width="26" height="26" rx="5" fill="#5FE3F2"/>
+      <rect x="30" y="30" width="26" height="26" rx="5" fill="#8B7CFF"/>
+    </g>
+    <text class="name" x="108" y="71">Patches</text>
+  </g>
+
+  <!-- Mini Sudoku -->
+  <g transform="translate(335 20)">
+    <rect class="tile" width="295" height="120" rx="22"/>
+    <rect class="ring" width="295" height="120" rx="22" style="animation-delay:1s"/>
+    <g transform="translate(30 32)" class="ico" stroke="#5FE3F2">
+      <rect width="56" height="56" rx="8"/>
+      <path d="M28 0v56M0 28h56"/>
+    </g>
+    <text class="name" x="108" y="71">Mini Sudoku</text>
+  </g>
+
+  <!-- Zip -->
+  <g transform="translate(650 20)">
+    <rect class="tile" width="295" height="120" rx="22"/>
+    <rect class="ring" width="295" height="120" rx="22" style="animation-delay:2s"/>
+    <g transform="translate(30 32)">
+      <path class="ico" stroke="#FFC857" d="M6 6h44v22H6v22h44"/>
+      <circle cx="6" cy="6" r="6" fill="#FFC857"/>
+      <circle cx="50" cy="50" r="6" fill="#FFC857"/>
+    </g>
+    <text class="name" x="108" y="71">Zip</text>
+  </g>
+
+  <!-- Werd -->
+  <g transform="translate(965 20)">
+    <rect class="tile" width="295" height="120" rx="22"/>
+    <rect class="ring" width="295" height="120" rx="22" style="animation-delay:3s"/>
+    <g transform="translate(30 32)">
+      <rect width="56" height="56" rx="10" fill="#47C97E"/>
+      <text x="28" y="40" text-anchor="middle" font-size="36" font-weight="800" fill="#0D1024">W</text>
+    </g>
+    <text class="name" x="108" y="71">Werd</text>
+  </g>
+
+  <!-- Pinpoint -->
+  <g transform="translate(20 160)">
+    <rect class="tile" width="295" height="120" rx="22"/>
+    <rect class="ring" width="295" height="120" rx="22" style="animation-delay:4s"/>
+    <g transform="translate(30 32)">
+      <circle class="ico" cx="28" cy="28" r="25" stroke="#FF7A90"/>
+      <circle class="ico" cx="28" cy="28" r="13" stroke="#FF7A90"/>
+      <circle cx="28" cy="28" r="5" fill="#FF7A90"/>
+    </g>
+    <text class="name" x="108" y="71">Pinpoint</text>
+  </g>
+
+  <!-- Crossclimb -->
+  <g transform="translate(335 160)">
+    <rect class="tile" width="295" height="120" rx="22"/>
+    <rect class="ring" width="295" height="120" rx="22" style="animation-delay:5s"/>
+    <path transform="translate(30 32)" class="ico" stroke="#8B7CFF" d="M12 0v56M44 0v56M12 12h32M12 28h32M12 44h32"/>
+    <text class="name" x="108" y="71">Crossclimb</text>
+  </g>
+
+  <!-- Tango -->
+  <g transform="translate(650 160)">
+    <rect class="tile" width="295" height="120" rx="22"/>
+    <rect class="ring" width="295" height="120" rx="22" style="animation-delay:6s"/>
+    <g transform="translate(30 32)">
+      <circle cx="16" cy="28" r="15" fill="#FFC857"/>
+      <circle class="ico" cx="42" cy="28" r="13" stroke="#5FE3F2"/>
+    </g>
+    <text class="name" x="108" y="71">Tango</text>
+  </g>
+
+  <!-- Queens -->
+  <g transform="translate(965 160)">
+    <rect class="tile" width="295" height="120" rx="22"/>
+    <rect class="ring" width="295" height="120" rx="22" style="animation-delay:7s"/>
+    <path transform="translate(30 32)" d="M4 46L0 14l15 12L28 2l13 24 15-12-4 32z" fill="#FFC857"/>
+    <rect x="34" y="84" width="48" height="6" rx="3" fill="#FFC857"/>
+    <text class="name" x="108" y="71">Queens</text>
+  </g>
+</svg>
