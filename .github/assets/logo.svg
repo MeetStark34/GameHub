@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="256" height="256" role="img" aria-label="GameHub logo">
+  <style>
+    .t { transform-box: fill-box; transform-origin: center; animation: pop 4s ease-in-out infinite; }
+    .b { animation-delay: .25s; }
+    .c { animation-delay: .75s; }
+    .d { animation-delay: .5s; }
+    @keyframes pop {
+      0%, 30%, 100% { transform: scale(1); }
+      15% { transform: scale(.82); }
+    }
+    @media (prefers-reduced-motion: reduce) { .t { animation: none; } }
+  </style>
+  <rect width="32" height="32" rx="7" fill="#16171b"/>
+  <rect class="t" x="5" y="5" width="10" height="10" rx="2.5" fill="#f5f4ef"/>
+  <rect class="t b" x="17" y="5" width="10" height="10" rx="2.5" fill="#6373ff"/>
+  <rect class="t c" x="5" y="17" width="10" height="10" rx="2.5" fill="#f5f4ef" opacity=".4"/>
+  <rect class="t d" x="17" y="17" width="10" height="10" rx="2.5" fill="#f5f4ef"/>
+</svg>

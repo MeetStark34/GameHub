@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 440" width="1280" height="440" role="img" aria-label="GameHub: Your daily brain training, without the daily limit. Play. Progress. Master.">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0D0E12"/>
+      <stop offset=".6" stop-color="#16171B"/>
+      <stop offset="1" stop-color="#1B1E3A"/>
+    </linearGradient>
+    <linearGradient id="title" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#A9B4FF"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#FFE27A"/>
+      <stop offset="1" stop-color="#FFAE34"/>
+    </linearGradient>
+    <radialGradient id="halo">
+      <stop offset="0" stop-color="#7383FF" stop-opacity=".9"/>
+      <stop offset=".55" stop-color="#6373FF" stop-opacity=".35"/>
+      <stop offset="1" stop-color="#6373FF" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="dots" width="32" height="32" patternUnits="userSpaceOnUse">
+      <circle cx="2" cy="2" r="1.5" fill="#fff" fill-opacity=".07"/>
+    </pattern>
+    <clipPath id="frame"><rect width="1280" height="440" rx="28"/></clipPath>
+  </defs>
+
+  <style>
+    text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif; }
+    .title { font-size: 84px; font-weight: 800; letter-spacing: -2px; }
+    .tag { font-size: 27px; fill: #C9CDE8; }
+    .word { font-size: 25px; font-weight: 700; fill: #FFFFFF; animation: word 6s ease-in-out infinite; }
+    .w2 { animation-delay: 2s; }
+    .w3 { animation-delay: 4s; }
+    .cell { fill: #FFFFFF; fill-opacity: .07; stroke: #FFFFFF; stroke-opacity: .16; }
+    .given { font-size: 34px; font-weight: 700; fill: #8E93BC; text-anchor: middle; }
+    .digit { font-size: 34px; font-weight: 800; fill: #8F9CFF; text-anchor: middle; opacity: 0; animation: digit 10s ease-out infinite both; }
+    .xp { fill: url(#gold); transform-box: fill-box; transform-origin: left center; animation: xp 10s ease-in-out infinite both; }
+    .glow { animation: glow 4s ease-in-out infinite; transform-box: fill-box; transform-origin: center; }
+    .lbl { font-size: 15px; font-weight: 700; letter-spacing: 2px; fill: #C9CDE8; }
+    @keyframes digit {
+      0% { opacity: 0; }
+      3%, 72% { opacity: 1; }
+      78%, 100% { opacity: 0; }
+    }
+    @keyframes xp {
+      0% { transform: scaleX(.04); }
+      62%, 76% { transform: scaleX(1); }
+      86%, 100% { transform: scaleX(.04); }
+    }
+    @keyframes word {
+      0%, 8% { opacity: .4; }
+      16%, 28% { opacity: 1; }
+      40%, 100% { opacity: .4; }
+    }
+    @keyframes glow {
+      0%, 100% { opacity: .55; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.08); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .digit, .word, .xp, .glow { animation: none; opacity: 1; }
+    }
+  </style>
+
+  <g clip-path="url(#frame)">
+    <rect width="1280" height="440" fill="url(#bg)"/>
+    <rect width="1280" height="440" fill="url(#dots)"/>
+    <circle class="glow" cx="1002" cy="196" r="340" fill="url(#halo)"/>
+
+    <!-- Logo -->
+    <g transform="translate(80 62) scale(2.65)">
+      <rect width="32" height="32" rx="7" fill="#16171b" stroke="#fff" stroke-opacity=".14" stroke-width=".4"/>
+      <rect x="5" y="5" width="10" height="10" rx="2.5" fill="#f5f4ef"/>
+      <rect x="17" y="5" width="10" height="10" rx="2.5" fill="#6373ff"/>
+      <rect x="5" y="17" width="10" height="10" rx="2.5" fill="#f5f4ef" opacity=".4"/>
+      <rect x="17" y="17" width="10" height="10" rx="2.5" fill="#f5f4ef"/>
+    </g>
+
+    <!-- Copy -->
+    <text class="title" x="76" y="240" fill="url(#title)">GameHub</text>
+    <text class="tag" x="80" y="292">Your daily brain training,</text>
+    <text class="tag" x="80" y="328">without the daily limit</text>
+    <text class="word" x="80" y="378">Play.</text>
+    <text class="word w2" x="152" y="378">Progress.</text>
+    <text class="word w3" x="276" y="378">Master.</text>
+
+    <!-- Mini puzzle being solved -->
+    <g transform="translate(856 44)">
+      <rect class="cell" x="0" y="0" width="68" height="68" rx="12"/>
+      <rect class="cell" x="72" y="0" width="68" height="68" rx="12"/>
+      <rect class="cell" x="152" y="0" width="68" height="68" rx="12"/>
+      <rect class="cell" x="224" y="0" width="68" height="68" rx="12"/>
+      <rect class="cell" x="0" y="72" width="68" height="68" rx="12"/>
+      <rect class="cell" x="72" y="72" width="68" height="68" rx="12"/>
+      <rect class="cell" x="152" y="72" width="68" height="68" rx="12"/>
+      <rect class="cell" x="224" y="72" width="68" height="68" rx="12"/>
+      <rect class="cell" x="0" y="152" width="68" height="68" rx="12"/>
+      <rect class="cell" x="72" y="152" width="68" height="68" rx="12"/>
+      <rect class="cell" x="152" y="152" width="68" height="68" rx="12"/>
+      <rect class="cell" x="224" y="152" width="68" height="68" rx="12"/>
+      <rect class="cell" x="0" y="224" width="68" height="68" rx="12"/>
+      <rect class="cell" x="72" y="224" width="68" height="68" rx="12"/>
+      <rect class="cell" x="152" y="224" width="68" height="68" rx="12"/>
+      <rect class="cell" x="224" y="224" width="68" height="68" rx="12"/>
+
+      <!-- Given digits -->
+      <text class="given" x="34" y="46">1</text>
+      <text class="given" x="186" y="46">3</text>
+      <text class="given" x="106" y="118">4</text>
+      <text class="given" x="258" y="118">2</text>
+      <text class="given" x="34" y="198">2</text>
+      <text class="given" x="186" y="198">4</text>
+      <text class="given" x="106" y="270">3</text>
+      <text class="given" x="258" y="270">1</text>
+
+      <!-- Solved digits, one at a time -->
+      <text class="digit" style="animation-delay:.3s" x="106" y="46">2</text>
+      <text class="digit" style="animation-delay:.8s" x="258" y="46">4</text>
+      <text class="digit" style="animation-delay:1.3s" x="34" y="118">3</text>
+      <text class="digit" style="animation-delay:1.8s" x="186" y="118">1</text>
+      <text class="digit" style="animation-delay:2.3s" x="106" y="198">1</text>
+      <text class="digit" style="animation-delay:2.8s" x="258" y="198">3</text>
+      <text class="digit" style="animation-delay:3.3s" x="34" y="270">4</text>
+      <text class="digit" style="animation-delay:3.8s" x="186" y="270">2</text>
+
+      <!-- XP bar -->
+      <text class="lbl" x="0" y="326">XP</text>
+      <rect x="40" y="312" width="252" height="16" rx="8" fill="#fff" fill-opacity=".12"/>
+      <rect class="xp" x="40" y="312" width="252" height="16" rx="8"/>
+    </g>
+  </g>
+</svg>
