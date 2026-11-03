@@ -1,0 +1,112 @@
+{
+  "id": "2026-11-03T01-18-31-236Z-y6my",
+  "startedAt": "2026-11-03T01:18:31.236Z",
+  "model": "ollama:qwen3.5:4b",
+  "question": "How many achievements have I unlocked?",
+  "options": {
+    "tools": true,
+    "memory": false,
+    "seed": 2
+  },
+  "memoryContext": "",
+  "memoryContextChars": 0,
+  "systemPrompt": "You are the GameHub assistant. GameHub is a puzzle site with 8 games (Patches, Mini Sudoku, Zip, Werd, Pinpoint, Crossclimb, Queens, Tango), a Daily Set that resets at 00:00 UTC, XP, ranks, streaks and achievements.\nToday is 2026-11-03 (UTC). You are talking to the signed-in player.\nFor any question about this player, call a tool to get the real data first. Never guess or invent numbers; quote the numbers from the tool result exactly. If a tool fails, say so. You can read XP, ranks, streaks and achievements but you cannot change them.\nAnswer in one to three short sentences.",
+  "steps": [
+    {
+      "type": "llm",
+      "ms": 1019,
+      "promptTokens": 1167,
+      "outputTokens": 28,
+      "content": "",
+      "toolCalls": [
+        {
+          "id": "call_0",
+          "name": "get_achievements",
+          "arguments": {
+            "status": "unlocked"
+          }
+        }
+      ]
+    },
+    {
+      "type": "tool",
+      "ms": 29,
+      "name": "get_achievements",
+      "arguments": {
+        "status": "unlocked"
+      },
+      "ok": true,
+      "errorCode": null,
+      "result": {
+        "unlockedCount": 11,
+        "total": 47,
+        "unlocked": [
+          {
+            "name": "First Steps",
+            "unlockedAt": "2026-11-03"
+          },
+          {
+            "name": "Warming Up",
+            "unlockedAt": "2026-11-03"
+          },
+          {
+            "name": "Daily Debut",
+            "unlockedAt": "2026-11-03"
+          },
+          {
+            "name": "Explorer",
+            "unlockedAt": "2026-11-03"
+          },
+          {
+            "name": "Flawless",
+            "unlockedAt": "2026-11-03"
+          },
+          {
+            "name": "On a Roll",
+            "unlockedAt": "2026-11-03"
+          },
+          {
+            "name": "Week Warrior",
+            "unlockedAt": "2026-11-03"
+          },
+          {
+            "name": "True Player",
+            "unlockedAt": "2026-11-03"
+          },
+          {
+            "name": "Quick Thinker",
+            "unlockedAt": "2026-11-03"
+          },
+          {
+            "name": "Hole in One",
+            "unlockedAt": "2026-11-03"
+          },
+          {
+            "name": "Bullseye",
+            "unlockedAt": "2026-11-03"
+          }
+        ]
+      }
+    },
+    {
+      "type": "llm",
+      "ms": 552,
+      "promptTokens": 1453,
+      "outputTokens": 14,
+      "content": "You have unlocked 11 out of 47 achievements.",
+      "toolCalls": []
+    }
+  ],
+  "toolsCalled": [
+    "get_achievements"
+  ],
+  "blockedCalls": [],
+  "answer": "You have unlocked 11 out of 47 achievements.",
+  "totals": {
+    "ms": 1602,
+    "llmCalls": 2,
+    "promptTokens": 2620,
+    "outputTokens": 42,
+    "firstPromptTokens": 1167
+  }
+}

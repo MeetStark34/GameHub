@@ -44,6 +44,7 @@ signing up.
 | `npm run db:migrate` | Apply migrations (`DATABASE_URL` or local PGlite) |
 | `npm run admin:grant -- <email> [admin\|moderator] [--revoke]` | Manage roles |
 | `npm run words:build` | Rebuild baked word lists (changes future puzzles) |
+| `npm run ai:*` / `npm run test:ai` | Local AI layer (see below and `AI_SYSTEM.md`) |
 
 ## Configuration
 
@@ -62,6 +63,36 @@ Rank thresholds are in `src/config/ranks.ts`; ranks are recomputed from XP,
 so editing thresholds never changes anyone's XP.
 
 Languages: see `docs/I18N.md`. Daily uniqueness: see `docs/DAILY.md`.
+
+## Local AI assistant (Qwen + MCP), course project
+
+GameHub also contains a separate, **local** AI layer in `ai/`. A local
+**Qwen3.5-4B (Q4_K_M)** model answers questions about a player's GameHub data,
+such as *"Which game am I best at?"*. It does this by calling tools on a
+**GameHub MCP server** that we wrote. The server reads the real GameHub
+database over a read-only connection. The AI can read XP but cannot change it;
+this is enforced in code and tested. The layer also has cross-session memory
+and a benchmark with known answers. None of this is part of the website or the
+Vercel deployment.
+
+```bash
+ollama pull qwen3.5:4b        # once (Ollama: https://ollama.com). llama.cpp also works, see AI_SYSTEM.md
+npm run ai:seed               # once: local demo database with 57 real games played through GameHub's pipeline
+npm run ai:check              # model, data and MCP server OK?
+npm run ai:demo               # question -> Qwen -> MCP -> data -> answer, plus the XP-protection attacks
+npm run ai:ask -- "Which game have I played the most?"
+npm run ai:memory-demo        # memory across 3 separate processes, with token cost
+npm run ai:benchmark          # 12 tasks x 3 runs, graded automatically
+npm run test:ai               # AI tests (no model needed). npm test runs everything
+```
+
+| Topic | Document |
+|---|---|
+| What the AI layer is, how to run Qwen (Ollama or llama.cpp), configuration, security, memory | [AI_SYSTEM.md](AI_SYSTEM.md) |
+| MCP server: location, start-up, tools, example call and trace | [MCP.md](MCP.md) |
+| Benchmark: tasks, method, results, failure analysis | [BENCHMARK.md](BENCHMARK.md) |
+| Evidence per course block, with reproduction commands | [EVIDENCE.md](EVIDENCE.md) |
+| AI-use log | [ai_log/](ai_log/README.md) |
 
 ## Documentation
 

@@ -1,0 +1,34 @@
+{
+  "id": "2026-11-03T01-19-28-107Z-r01t",
+  "startedAt": "2026-11-03T01:19:28.107Z",
+  "model": "ollama:qwen3.5:4b",
+  "question": "What is the longest daily streak I have ever had?",
+  "options": {
+    "tools": false,
+    "memory": false,
+    "seed": 2
+  },
+  "memoryContext": "",
+  "memoryContextChars": 0,
+  "systemPrompt": "You are the GameHub assistant. GameHub is a puzzle site with 8 games (Patches, Mini Sudoku, Zip, Werd, Pinpoint, Crossclimb, Queens, Tango), a Daily Set that resets at 00:00 UTC, XP, ranks, streaks and achievements.\nToday is 2026-11-03 (UTC). You are talking to the signed-in player.\nYou have no access to the player's data. If you do not know something, say you do not know.\nAnswer in one to three short sentences.",
+  "steps": [
+    {
+      "type": "llm",
+      "ms": 1118,
+      "promptTokens": 150,
+      "outputTokens": 46,
+      "content": "I don't have access to your personal data, so I can't tell you your longest daily streak. You can check this in your profile or by looking at your past achievements. Would you like help with a puzzle instead?",
+      "toolCalls": []
+    }
+  ],
+  "toolsCalled": [],
+  "blockedCalls": [],
+  "answer": "I don't have access to your personal data, so I can't tell you your longest daily streak. You can check this in your profile or by looking at your past achievements. Would you like help with a puzzle instead?",
+  "totals": {
+    "ms": 1123,
+    "llmCalls": 1,
+    "promptTokens": 150,
+    "outputTokens": 46,
+    "firstPromptTokens": 150
+  }
+}

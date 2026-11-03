@@ -50,13 +50,15 @@ export const viewport: Viewport = {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const jar = await cookies();
   const user = await currentUser();
-  const db = await getDb();
+  // Only signed-in (or guest) requests need the database here; anonymous pages
+  // render without opening a connection.
+  const db = user ? await getDb() : null;
   // Everything below depends only on the user, so it is fetched concurrently.
   const [locale, tr, prefs, row, streaks, admin] = await Promise.all([
     getLocale(),
     getTranslator(),
     user ? requestPreferences(user.id) : null,
-    user
+    user && db
       ? maybeOne<{ total_xp: number; unread: number }>(
           db,
           `select coalesce((select total_xp from user_stats where user_id = $1), 0) total_xp,
@@ -64,7 +66,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           [user.id],
         )
       : null,
-    user ? loadStreaks(db, user.id) : null,
+    user && db ? loadStreaks(db, user.id) : null,
     user && !user.is_guest ? isAdmin(user.id) : false,
   ]);
   const cookieTheme = jar.get('gh-theme')?.value;

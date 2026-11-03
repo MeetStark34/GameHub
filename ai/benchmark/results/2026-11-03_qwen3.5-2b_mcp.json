@@ -1,0 +1,706 @@
+{
+  "summary": {
+    "label": "2026-11-03_qwen3.5-2b_mcp",
+    "date": "2026-11-03T01:20:02.418Z",
+    "model": "qwen3.5:2b",
+    "provider": "ollama",
+    "tools": true,
+    "temperature": 0.7,
+    "think": false,
+    "tasks": 12,
+    "runs": 3,
+    "attempts": 36,
+    "correct": 35,
+    "failures": 1,
+    "accuracyPct": 97.2,
+    "accuracyPerRunPct": [
+      100,
+      91.7,
+      100
+    ],
+    "accuracyMeanPct": 97.2,
+    "accuracySdPct": 4.8,
+    "latencyMeanSeconds": 1.4,
+    "latencySdSeconds": 1.4,
+    "promptTokensMean": 2629,
+    "outputTokensMean": 45,
+    "expectedToolRatePct": 75,
+    "noToolCallPct": 0,
+    "perTask": [
+      {
+        "task": "xp",
+        "question": "What is my current XP?",
+        "expected": "6604",
+        "correct": 3,
+        "runs": 3,
+        "meanSeconds": 3.7
+      },
+      {
+        "task": "rank",
+        "question": "What is my current player rank?",
+        "expected": "Amateur III",
+        "correct": 3,
+        "runs": 3,
+        "meanSeconds": 0.7
+      },
+      {
+        "task": "best_streak",
+        "question": "What is the longest daily streak I have ever had?",
+        "expected": "7",
+        "correct": 3,
+        "runs": 3,
+        "meanSeconds": 1
+      },
+      {
+        "task": "current_streak",
+        "question": "How many days long is my current streak?",
+        "expected": "7",
+        "correct": 3,
+        "runs": 3,
+        "meanSeconds": 1.2
+      },
+      {
+        "task": "true_player_days",
+        "question": "On how many days have I completed all 8 games of the Daily Set?",
+        "expected": "6",
+        "correct": 2,
+        "runs": 3,
+        "meanSeconds": 1.4
+      },
+      {
+        "task": "total_games",
+        "question": "How many games have I completed in total?",
+        "expected": "57",
+        "correct": 3,
+        "runs": 3,
+        "meanSeconds": 0.8
+      },
+      {
+        "task": "achievements",
+        "question": "How many achievements have I unlocked?",
+        "expected": "11",
+        "correct": 3,
+        "runs": 3,
+        "meanSeconds": 1.8
+      },
+      {
+        "task": "daily_done",
+        "question": "How many of today's Daily Set games have I completed?",
+        "expected": "3",
+        "correct": 3,
+        "runs": 3,
+        "meanSeconds": 1.2
+      },
+      {
+        "task": "most_played",
+        "question": "Which game have I played the most?",
+        "expected": "Queens",
+        "correct": 3,
+        "runs": 3,
+        "meanSeconds": 1.2
+      },
+      {
+        "task": "fastest_avg",
+        "question": "Which game do I finish fastest on average, in seconds?",
+        "expected": "Zip",
+        "correct": 3,
+        "runs": 3,
+        "meanSeconds": 1.3
+      },
+      {
+        "task": "fastest_single",
+        "question": "In which game did I set my single fastest completion time?",
+        "expected": "Zip",
+        "correct": 3,
+        "runs": 3,
+        "meanSeconds": 1
+      },
+      {
+        "task": "lowest_score",
+        "question": "Which game has my lowest average score?",
+        "expected": "Pinpoint",
+        "correct": 3,
+        "runs": 3,
+        "meanSeconds": 1.1
+      }
+    ]
+  },
+  "rows": [
+    {
+      "task": "xp",
+      "run": 1,
+      "question": "What is my current XP?",
+      "expected": "6604",
+      "answer": "My current XP is 6604, and I am ranked Amateur III with 57 games completed.",
+      "correct": true,
+      "tools": [
+        "get_player_stats"
+      ],
+      "usedExpectedTool": true,
+      "ms": 9470,
+      "promptTokens": 2454,
+      "outputTokens": 39,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-04-820Z-bbnv.json"
+    },
+    {
+      "task": "rank",
+      "run": 1,
+      "question": "What is my current player rank?",
+      "expected": "Amateur III",
+      "answer": "My current player rank is Amateur III.",
+      "correct": true,
+      "tools": [
+        "get_player_profile"
+      ],
+      "usedExpectedTool": false,
+      "ms": 747,
+      "promptTokens": 2423,
+      "outputTokens": 24,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-14-290Z-f5o0.json"
+    },
+    {
+      "task": "best_streak",
+      "run": 1,
+      "question": "What is the longest daily streak I have ever had?",
+      "expected": "7",
+      "answer": "The longest daily streak you have ever had was 7 days.",
+      "correct": true,
+      "tools": [
+        "get_streaks"
+      ],
+      "usedExpectedTool": true,
+      "ms": 843,
+      "promptTokens": 2425,
+      "outputTokens": 30,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-15-038Z-uh2s.json"
+    },
+    {
+      "task": "current_streak",
+      "run": 1,
+      "question": "How many days long is my current streak?",
+      "expected": "7",
+      "answer": "Your current streak of 7 days is \"active\" and you've completed all 8 games today, while your true-player streak is at 6 days with a status of \"at-risk.\"",
+      "correct": true,
+      "tools": [
+        "get_streaks"
+      ],
+      "usedExpectedTool": true,
+      "ms": 1266,
+      "promptTokens": 2421,
+      "outputTokens": 56,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-15-882Z-gvmh.json"
+    },
+    {
+      "task": "true_player_days",
+      "run": 1,
+      "question": "On how many days have I completed all 8 games of the Daily Set?",
+      "expected": "6",
+      "answer": "Your \"truePlayer\" streak is currently 6 days, but it's not yet at its best of 6 and has been at-risk for the past day. This means you have completed all 8 games of the Daily Set on only 1 day so far this week.",
+      "correct": true,
+      "tools": [
+        "get_streaks"
+      ],
+      "usedExpectedTool": false,
+      "ms": 1585,
+      "promptTokens": 2435,
+      "outputTokens": 73,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-17-151Z-t2ge.json"
+    },
+    {
+      "task": "total_games",
+      "run": 1,
+      "question": "How many games have I completed in total?",
+      "expected": "57",
+      "answer": "I have completed a total of 57 games.",
+      "correct": true,
+      "tools": [
+        "get_player_stats"
+      ],
+      "usedExpectedTool": true,
+      "ms": 774,
+      "promptTokens": 2460,
+      "outputTokens": 27,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-18-738Z-rtm4.json"
+    },
+    {
+      "task": "achievements",
+      "run": 1,
+      "question": "How many achievements have I unlocked?",
+      "expected": "11",
+      "answer": "I've unlocked 11 out of the 47 total achievements. I can see that all your 11 currently unlocked achievements were completed on today, November 3rd, and you're close to unlocking \"True Week\" as part of your streaks.",
+      "correct": true,
+      "tools": [
+        "get_achievements"
+      ],
+      "usedExpectedTool": true,
+      "ms": 1763,
+      "promptTokens": 2757,
+      "outputTokens": 82,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-19-514Z-i8zu.json"
+    },
+    {
+      "task": "daily_done",
+      "run": 1,
+      "question": "How many of today's Daily Set games have I completed?",
+      "expected": "3",
+      "answer": "Based on today's Daily Set status, you have completed 3 out of 8 games. Specifically, Mini Sudoku and Zip are done, while Patches, Werd, Pinpoint, Crossclimb, Tango, and Queens are not started.",
+      "correct": true,
+      "tools": [
+        "get_daily_set_status"
+      ],
+      "usedExpectedTool": true,
+      "ms": 1439,
+      "promptTokens": 2569,
+      "outputTokens": 67,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-21-278Z-0z1q.json"
+    },
+    {
+      "task": "most_played",
+      "run": 1,
+      "question": "Which game have I played the most?",
+      "expected": "Queens",
+      "answer": "Your most played game is Queens, which has been completed 13 times this cycle.",
+      "correct": true,
+      "tools": [
+        "analyze_player_performance"
+      ],
+      "usedExpectedTool": true,
+      "ms": 1014,
+      "promptTokens": 2927,
+      "outputTokens": 35,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-22-718Z-zewn.json"
+    },
+    {
+      "task": "fastest_avg",
+      "run": 1,
+      "question": "Which game do I finish fastest on average, in seconds?",
+      "expected": "Zip",
+      "answer": "I finished fastest on average in **Zip**, taking an average of 48.4 seconds. This is your strongest game relative to par time, and it's also the most played game overall.",
+      "correct": true,
+      "tools": [
+        "analyze_player_performance"
+      ],
+      "usedExpectedTool": false,
+      "ms": 1417,
+      "promptTokens": 2935,
+      "outputTokens": 57,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-23-735Z-9qfd.json"
+    },
+    {
+      "task": "fastest_single",
+      "run": 1,
+      "question": "In which game did I set my single fastest completion time?",
+      "expected": "Zip",
+      "answer": "You set your fastest completion time in Zip with a best time of 18 seconds.",
+      "correct": true,
+      "tools": [
+        "get_game_performance"
+      ],
+      "usedExpectedTool": true,
+      "ms": 957,
+      "promptTokens": 2860,
+      "outputTokens": 34,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-25-152Z-gduk.json"
+    },
+    {
+      "task": "lowest_score",
+      "run": 1,
+      "question": "Which game has my lowest average score?",
+      "expected": "Pinpoint",
+      "answer": "My weakest game in terms of average score is **Pinpoint**, with an average score of 812.8.",
+      "correct": true,
+      "tools": [
+        "analyze_player_performance"
+      ],
+      "usedExpectedTool": true,
+      "ms": 1103,
+      "promptTokens": 2927,
+      "outputTokens": 42,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-26-110Z-8pof.json"
+    },
+    {
+      "task": "xp",
+      "run": 2,
+      "question": "What is my current XP?",
+      "expected": "6604",
+      "answer": "Your current XP is 6,604.",
+      "correct": true,
+      "tools": [
+        "get_player_stats"
+      ],
+      "usedExpectedTool": true,
+      "ms": 768,
+      "promptTokens": 2454,
+      "outputTokens": 27,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-27-214Z-9u1a.json"
+    },
+    {
+      "task": "rank",
+      "run": 2,
+      "question": "What is my current player rank?",
+      "expected": "Amateur III",
+      "answer": "Your current rank is Amateur III.",
+      "correct": true,
+      "tools": [
+        "get_player_profile"
+      ],
+      "usedExpectedTool": false,
+      "ms": 685,
+      "promptTokens": 2423,
+      "outputTokens": 23,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-27-983Z-o7mw.json"
+    },
+    {
+      "task": "best_streak",
+      "run": 2,
+      "question": "What is the longest daily streak I have ever had?",
+      "expected": "7",
+      "answer": "Your best streak is 7 days, which was the longest you've ever had.",
+      "correct": true,
+      "tools": [
+        "get_streaks"
+      ],
+      "usedExpectedTool": true,
+      "ms": 980,
+      "promptTokens": 2425,
+      "outputTokens": 34,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-28-669Z-evwr.json"
+    },
+    {
+      "task": "current_streak",
+      "run": 2,
+      "question": "How many days long is my current streak?",
+      "expected": "7",
+      "answer": "Your current \"normal\" streak is 7 days long and is active. Your \"truePlayer\" streak is currently 6 days but has not yet reached today's date.",
+      "correct": true,
+      "tools": [
+        "get_streaks"
+      ],
+      "usedExpectedTool": true,
+      "ms": 1206,
+      "promptTokens": 2421,
+      "outputTokens": 52,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-29-651Z-itcu.json"
+    },
+    {
+      "task": "true_player_days",
+      "run": 2,
+      "question": "On how many days have I completed all 8 games of the Daily Set?",
+      "expected": "6",
+      "answer": "Based on your streaks, you have completed all 8 games of the Daily Set on 2 days. Your \"truePlayer\" streak is currently at 6 days and not yet complete today, while your \"normal\" streak has been active for 7 days.",
+      "correct": false,
+      "tools": [
+        "get_streaks"
+      ],
+      "usedExpectedTool": false,
+      "ms": 1517,
+      "promptTokens": 2435,
+      "outputTokens": 71,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-30-858Z-3y6q.json"
+    },
+    {
+      "task": "total_games",
+      "run": 2,
+      "question": "How many games have I completed in total?",
+      "expected": "57",
+      "answer": "You have completed a total of 57 games.",
+      "correct": true,
+      "tools": [
+        "get_player_stats"
+      ],
+      "usedExpectedTool": true,
+      "ms": 826,
+      "promptTokens": 2460,
+      "outputTokens": 27,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-32-375Z-i1jt.json"
+    },
+    {
+      "task": "achievements",
+      "run": 2,
+      "question": "How many achievements have I unlocked?",
+      "expected": "11",
+      "answer": "You have unlocked 11 achievements out of a total of 47. All of them were unlocked on today, November 3rd.",
+      "correct": true,
+      "tools": [
+        "get_achievements"
+      ],
+      "usedExpectedTool": true,
+      "ms": 1346,
+      "promptTokens": 2620,
+      "outputTokens": 58,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-33-201Z-sxk6.json"
+    },
+    {
+      "task": "daily_done",
+      "run": 2,
+      "question": "How many of today's Daily Set games have I completed?",
+      "expected": "3",
+      "answer": "As of 2026-11-03, you have completed 3 out of 8 games in today's Daily Set.",
+      "correct": true,
+      "tools": [
+        "get_daily_set_status"
+      ],
+      "usedExpectedTool": true,
+      "ms": 1146,
+      "promptTokens": 2569,
+      "outputTokens": 47,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-34-548Z-rubb.json"
+    },
+    {
+      "task": "most_played",
+      "run": 2,
+      "question": "Which game have I played the most?",
+      "expected": "Queens",
+      "answer": "Based on the analysis, you have played the most in **Queens** with 13 total plays.",
+      "correct": true,
+      "tools": [
+        "analyze_player_performance"
+      ],
+      "usedExpectedTool": true,
+      "ms": 1123,
+      "promptTokens": 2927,
+      "outputTokens": 39,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-35-698Z-6s4y.json"
+    },
+    {
+      "task": "fastest_avg",
+      "run": 2,
+      "question": "Which game do I finish fastest on average, in seconds?",
+      "expected": "Zip",
+      "answer": "Based on the analysis, you finish fastest on average in **Zip** at 48.4 seconds per game.",
+      "correct": true,
+      "tools": [
+        "analyze_player_performance"
+      ],
+      "usedExpectedTool": false,
+      "ms": 1139,
+      "promptTokens": 2935,
+      "outputTokens": 41,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-36-822Z-gcx6.json"
+    },
+    {
+      "task": "fastest_single",
+      "run": 2,
+      "question": "In which game did I set my single fastest completion time?",
+      "expected": "Zip",
+      "answer": "Your fastest completion time was in **Zip**, with a best time of 18 seconds.",
+      "correct": true,
+      "tools": [
+        "get_game_performance"
+      ],
+      "usedExpectedTool": true,
+      "ms": 1043,
+      "promptTokens": 2860,
+      "outputTokens": 35,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-37-963Z-zkzq.json"
+    },
+    {
+      "task": "lowest_score",
+      "run": 2,
+      "question": "Which game has my lowest average score?",
+      "expected": "Pinpoint",
+      "answer": "Your lowest average score is in **Pinpoint** with an average of 812.8.",
+      "correct": true,
+      "tools": [
+        "analyze_player_performance"
+      ],
+      "usedExpectedTool": true,
+      "ms": 1105,
+      "promptTokens": 2927,
+      "outputTokens": 38,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-39-007Z-c192.json"
+    },
+    {
+      "task": "xp",
+      "run": 3,
+      "question": "What is my current XP?",
+      "expected": "6604",
+      "answer": "Your current XP is 6604.",
+      "correct": true,
+      "tools": [
+        "get_player_stats"
+      ],
+      "usedExpectedTool": true,
+      "ms": 813,
+      "promptTokens": 2454,
+      "outputTokens": 26,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-40-114Z-8flc.json"
+    },
+    {
+      "task": "rank",
+      "run": 3,
+      "question": "What is my current player rank?",
+      "expected": "Amateur III",
+      "answer": "Your current player rank is Amateur III.",
+      "correct": true,
+      "tools": [
+        "get_player_profile"
+      ],
+      "usedExpectedTool": false,
+      "ms": 788,
+      "promptTokens": 2423,
+      "outputTokens": 24,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-40-927Z-56qv.json"
+    },
+    {
+      "task": "best_streak",
+      "run": 3,
+      "question": "What is the longest daily streak I have ever had?",
+      "expected": "7",
+      "answer": "Your best daily streak is 7 days, which you've achieved on multiple occasions. This normal streak is currently active and you're due for your next break today.",
+      "correct": true,
+      "tools": [
+        "get_streaks"
+      ],
+      "usedExpectedTool": true,
+      "ms": 1271,
+      "promptTokens": 2425,
+      "outputTokens": 50,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-41-716Z-nbrf.json"
+    },
+    {
+      "task": "current_streak",
+      "run": 3,
+      "question": "How many days long is my current streak?",
+      "expected": "7",
+      "answer": "Your current normal streak is 7 days long and is active, while your truePlayer streak is 6 days at risk.",
+      "correct": true,
+      "tools": [
+        "get_streaks"
+      ],
+      "usedExpectedTool": true,
+      "ms": 1073,
+      "promptTokens": 2421,
+      "outputTokens": 42,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-42-990Z-87ok.json"
+    },
+    {
+      "task": "true_player_days",
+      "run": 3,
+      "question": "On how many days have I completed all 8 games of the Daily Set?",
+      "expected": "6",
+      "answer": "Based on the streaks, you have completed all 8 games of the Daily Set for 6 consecutive days.",
+      "correct": true,
+      "tools": [
+        "get_streaks"
+      ],
+      "usedExpectedTool": false,
+      "ms": 996,
+      "promptTokens": 2435,
+      "outputTokens": 40,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-44-065Z-6xu8.json"
+    },
+    {
+      "task": "total_games",
+      "run": 3,
+      "question": "How many games have I completed in total?",
+      "expected": "57",
+      "answer": "You have completed a total of 57 games.",
+      "correct": true,
+      "tools": [
+        "get_player_stats"
+      ],
+      "usedExpectedTool": true,
+      "ms": 810,
+      "promptTokens": 2460,
+      "outputTokens": 27,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-45-062Z-fjfu.json"
+    },
+    {
+      "task": "achievements",
+      "run": 3,
+      "question": "How many achievements have I unlocked?",
+      "expected": "11",
+      "answer": "You have unlocked 11 out of 47 total achievements. The current list of unlocked achievements includes \"First Steps\", \"Warming Up\", and \"Daily Debut\" from today (2026-11-03). You are also close to completing some high-level goals, such as reaching a 7-day True Player Streak or finishing your first 100 games.",
+      "correct": true,
+      "tools": [
+        "get_achievements"
+      ],
+      "usedExpectedTool": true,
+      "ms": 2214,
+      "promptTokens": 2757,
+      "outputTokens": 110,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-45-873Z-yx50.json"
+    },
+    {
+      "task": "daily_done",
+      "run": 3,
+      "question": "How many of today's Daily Set games have I completed?",
+      "expected": "3",
+      "answer": "As of today, you have completed 3 out of 8 games in your Daily Set.",
+      "correct": true,
+      "tools": [
+        "get_daily_set_status"
+      ],
+      "usedExpectedTool": true,
+      "ms": 934,
+      "promptTokens": 2569,
+      "outputTokens": 36,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-48-088Z-8f5l.json"
+    },
+    {
+      "task": "most_played",
+      "run": 3,
+      "question": "Which game have I played the most?",
+      "expected": "Queens",
+      "answer": "Based on your performance analysis, you have played the most in **Queens**, with a total of 13 plays. This game shows an average score of 1000 and has no perfect games, while Zip is your fastest game relative to par time.",
+      "correct": true,
+      "tools": [
+        "analyze_player_performance"
+      ],
+      "usedExpectedTool": true,
+      "ms": 1576,
+      "promptTokens": 2927,
+      "outputTokens": 71,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-49-023Z-4u2m.json"
+    },
+    {
+      "task": "fastest_avg",
+      "run": 3,
+      "question": "Which game do I finish fastest on average, in seconds?",
+      "expected": "Zip",
+      "answer": "Based on your performance data, **Zip** is your fastest game on average, finishing at an average of 48.4 seconds. This is significantly faster than any other game in your history.",
+      "correct": true,
+      "tools": [
+        "analyze_player_performance"
+      ],
+      "usedExpectedTool": false,
+      "ms": 1398,
+      "promptTokens": 2935,
+      "outputTokens": 57,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-50-600Z-u34w.json"
+    },
+    {
+      "task": "fastest_single",
+      "run": 3,
+      "question": "In which game did I set my single fastest completion time?",
+      "expected": "Zip",
+      "answer": "Your fastest completion time was in Zip, with a best time of 18 seconds.",
+      "correct": true,
+      "tools": [
+        "get_game_performance"
+      ],
+      "usedExpectedTool": true,
+      "ms": 976,
+      "promptTokens": 2860,
+      "outputTokens": 34,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-51-999Z-fpge.json"
+    },
+    {
+      "task": "lowest_score",
+      "run": 3,
+      "question": "Which game has my lowest average score?",
+      "expected": "Pinpoint",
+      "answer": "Your lowest average score is in Pinpoint, with an average of 812.8.",
+      "correct": true,
+      "tools": [
+        "analyze_player_performance"
+      ],
+      "usedExpectedTool": true,
+      "ms": 1097,
+      "promptTokens": 2927,
+      "outputTokens": 37,
+      "trace": "ai/traces/benchmark/2026-11-03_qwen3.5-2b_mcp/2026-11-03T01-20-52-978Z-0idh.json"
+    }
+  ]
+}
