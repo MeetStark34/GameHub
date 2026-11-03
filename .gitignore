@@ -17,3 +17,8 @@ npm-debug.log*
 Thumbs.db
 *.log
 .e2e.log
+
+# Local AI layer (ai/): per-run traces, model files
+ai/traces/runs/
+*.gguf
+models/

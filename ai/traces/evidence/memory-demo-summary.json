@@ -1,0 +1,41 @@
+{
+  "date": "2026-11-03T01:17:46.017Z",
+  "model": "qwen3.5:4b",
+  "sessionA": {
+    "phase": "a",
+    "answer": "I've saved your preferences: your favourite game is Tango and your goal is to reach Pro II rank.",
+    "tools": [
+      "remember_preference"
+    ],
+    "memoryChars": 0,
+    "firstPromptTokens": 1359
+  },
+  "sessionB": {
+    "phase": "b",
+    "answer": "Your favourite game is Tango, and you have completed it 6 times.",
+    "tools": [
+      "recall_memory",
+      "get_game_performance"
+    ],
+    "memoryChars": 376,
+    "firstPromptTokens": 1451
+  },
+  "control": {
+    "phase": "control",
+    "answer": "Your favourite game is Queens, and you have completed it 13 times.",
+    "tools": [
+      "get_player_profile",
+      "analyze_player_performance"
+    ],
+    "memoryChars": 0,
+    "firstPromptTokens": 1179
+  },
+  "storedPreferences": {
+    "favoriteGame": "tango",
+    "goal": "reach the Pro II rank"
+  },
+  "recalledAcrossRestart": true,
+  "controlKnewWithoutMemory": false,
+  "memoryContextChars": 376,
+  "memoryTokenCost": 272
+}

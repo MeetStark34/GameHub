@@ -74,12 +74,53 @@ export const wrapPostgres = (s: Unsafe): Queryable => ({
   query: async <T,>(text: string, params?: unknown[]) => (await s.unsafe(text, (params ?? []) as never[])) as T[],
 });
 
+/** Socket-level failures (e.g. the pooler dropping an idle connection), as opposed to SQL errors. */
+const CONNECTION_ERROR_CODES = new Set(['CONNECTION_CLOSED', 'CONNECTION_ENDED', 'CONNECTION_DESTROYED', 'CONNECT_TIMEOUT', 'ECONNRESET', 'EPIPE', 'ETIMEDOUT']);
+const errorCode = (err: unknown) => String((err as { code?: unknown } | null)?.code ?? '');
+export const isConnectionError = (err: unknown) => CONNECTION_ERROR_CODES.has(errorCode(err));
+
+/** Log-safe description of a connection string: host and port only, never credentials. */
+export function describeDbUrl(url: string): string {
+  try {
+    const u = new URL(url);
+    return `host=${u.hostname} port=${u.port || '5432'}`;
+  } catch {
+    return 'unparseable DATABASE_URL (special characters in the password must be URL-encoded)';
+  }
+}
+
+/**
+ * Wraps a Queryable so connection/auth failures are logged with safe context,
+ * and a plain read that hit a dropped pooled connection is retried once.
+ * Writes and transactions are never retried: a reset mid-write is ambiguous.
+ */
+export function resilientQueryable(q: Queryable, target: string): Queryable {
+  const log = (err: unknown, retrying: boolean) => {
+    const code = errorCode(err);
+    // 08xxx: connection exceptions, 28xxx: auth failures, XX000: Supavisor "tenant or user not found".
+    if (isConnectionError(err) || /^(08|28)/.test(code) || code === 'XX000')
+      console.error(`[db] ${code || 'error'} (${target})${retrying ? ', retrying read once' : ''}: ${(err as Error).message}`);
+  };
+  return {
+    query: async <T,>(text: string, params?: unknown[]) => {
+      try {
+        return await q.query<T>(text, params);
+      } catch (err) {
+        const retry = isConnectionError(err) && /^\s*select\b/i.test(text);
+        log(err, retry);
+        if (!retry) throw err;
+        return q.query<T>(text, params);
+      }
+    },
+  };
+}
+
 export async function createPostgresDb(url: string): Promise<Db> {
   const { default: postgres } = await import('postgres');
   const sql = postgres(url, { ...postgresClientOptions, max: Number(process.env.DB_POOL_MAX ?? 5), idle_timeout: 20 });
   const wrap = wrapPostgres;
   return {
-    ...wrap(sql),
+    ...resilientQueryable(wrap(sql), describeDbUrl(url)),
     tx: (fn) => sql.begin((tx) => fn(wrap(tx))) as Promise<never>,
     exec: async (script) => {
       await sql.unsafe(script);
@@ -180,7 +221,7 @@ export function getDb(): Promise<Db> {
         return db;
       }
       if (process.env.NODE_ENV === 'production' && process.env.ALLOW_PGLITE_IN_PRODUCTION !== '1') {
-        throw new Error('DATABASE_URL is required in production.');
+        throw new Error('DATABASE_URL is required in production (on Vercel: Project Settings -> Environment Variables, Production scope, then redeploy).');
       }
       const db = await createPgliteDb(process.env.PGLITE_DATA_DIR ?? path.join(/* turbopackIgnore: true */ process.cwd(), '.data', 'pglite'));
       await migrate(db);
