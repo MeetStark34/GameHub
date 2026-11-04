@@ -6,7 +6,10 @@ import { maybeOne, one, type Db, type Queryable } from '@/lib/db';
 const scrypt = promisify(scryptCb) as (pw: string, salt: Buffer, len: number, opts: object) => Promise<Buffer>;
 const SCRYPT = { N: 16384, r: 8, p: 1, keylen: 64 };
 
-export const SESSION_TTL_DAYS = { member: 30, guest: 365 };
+export const SESSION_TTL_DAYS = { member: 30 };
+/** Guest accounts are deleted this long after creation (D-042, migration 0006). */
+export const GUEST_TTL_HOURS = 12;
+export const guestExpiry = (createdAt: Date) => new Date(createdAt.getTime() + GUEST_TTL_HOURS * 3_600_000);
 
 export interface UserRow {
   id: string;
@@ -14,6 +17,8 @@ export interface UserRow {
   display_name: string;
   email: string | null;
   is_guest: boolean;
+  /** Set only for guests: when the account stops working and gets deleted. */
+  guest_expires_at: Date | null;
   title: string | null;
   profile_public: boolean;
   show_on_leaderboards: boolean;
@@ -60,22 +65,25 @@ export function validatePassword(pw: string): string | null {
   return null;
 }
 
-export async function createGuest(db: Queryable): Promise<UserRow> {
+/** A temporary guest account, expiring exactly GUEST_TTL_HOURS after creation (server clock, UTC). */
+export async function createGuest(db: Queryable, now = new Date()): Promise<UserRow> {
   for (let i = 0; i < 5; i++) {
     const handle = `guest-${randomBytes(4).toString('hex')}`;
     const rows = await db.query<UserRow>(
-      `insert into users (handle, display_name, is_guest, show_on_leaderboards) values ($1, 'Guest', true, false)
+      `insert into users (handle, display_name, is_guest, show_on_leaderboards, created_at, guest_expires_at)
+       values ($1, 'Guest', true, false, $2::timestamptz, $3::timestamptz)
        on conflict do nothing returning *`,
-      [handle],
+      [handle, now.toISOString(), guestExpiry(now).toISOString()],
     );
     if (rows.length) return rows[0];
   }
   throw new Error('Could not allocate a guest handle');
 }
 
-export async function createSession(db: Queryable, userId: string, guest: boolean, now = new Date()): Promise<{ token: string; expires: Date }> {
+/** Member sessions last SESSION_TTL_DAYS; a guest session ends when the guest account expires. */
+export async function createSession(db: Queryable, userId: string, guestExpiresAt: Date | null, now = new Date()): Promise<{ token: string; expires: Date }> {
   const token = newToken();
-  const expires = new Date(now.getTime() + (guest ? SESSION_TTL_DAYS.guest : SESSION_TTL_DAYS.member) * 86_400_000);
+  const expires = guestExpiresAt ? new Date(guestExpiresAt) : new Date(now.getTime() + SESSION_TTL_DAYS.member * 86_400_000);
   await db.query('insert into auth_sessions (id, user_id, expires_at) values ($1, $2, $3::timestamptz)', [
     sha256(token),
     userId,
@@ -89,9 +97,11 @@ export async function userForToken(db: Queryable, token: string | undefined, now
   const row = await maybeOne<UserRow & { session_id: string; last_seen_at: Date }>(
     db,
     `select u.*, s.id as session_id, s.last_seen_at from auth_sessions s join users u on u.id = s.user_id
-     where s.id = $1 and s.expires_at > $2::timestamptz`,
+     where s.id = $1 and s.expires_at > $2::timestamptz
+       and (not u.is_guest or u.guest_expires_at > $2::timestamptz)`,
     [sha256(token), now.toISOString()],
   );
+  // An expired guest is signed out at once, even before the cleanup job deletes it.
   if (!row) return null;
   if (now.getTime() - new Date(row.last_seen_at).getTime() > 3_600_000)
     await db.query('update auth_sessions set last_seen_at = $2::timestamptz where id = $1', [row.session_id, now.toISOString()]);
@@ -143,8 +153,9 @@ export async function signUp(db: Db, input: SignUpInput, currentGuestId: string 
     if (await maybeOne(tx, 'select 1 from users where handle = $1', [handle])) throw new AuthError('errors.handleTaken', 409);
     if (currentGuestId) {
       const upgraded = await tx.query<UserRow>(
-        `update users set email = $2, password_hash = $3, handle = $4, display_name = $5, is_guest = false, show_on_leaderboards = true
-         where id = $1 and is_guest returning *`,
+        `update users set email = $2, password_hash = $3, handle = $4, display_name = $5, is_guest = false, guest_expires_at = null,
+                          show_on_leaderboards = true
+         where id = $1 and is_guest and guest_expires_at > now() returning *`,
         [currentGuestId, email, hash, handle, displayName],
       );
       if (upgraded.length) return upgraded[0];

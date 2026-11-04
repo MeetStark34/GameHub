@@ -1,6 +1,7 @@
+import { GuestNotice } from '@/components/guest-notice';
 import type { Metadata } from 'next';
 import { getTranslator } from '@/i18n/server';
-import { Card, ButtonLink, PageHeader, SectionTitle } from '@/components/ui';
+import { Card, PageHeader, SectionTitle } from '@/components/ui';
 import { DataControls, LanguagePicker, ProfileForm, SoundToggle, ThemePicker } from '@/components/settings/settings-client';
 import { currentUser } from '@/server/auth';
 
@@ -42,12 +43,7 @@ export default async function SettingsPage() {
         </section>
       )}
 
-      {user?.is_guest && (
-        <Card className="flex flex-wrap items-center gap-3 p-4">
-          <p className="flex-1 text-sm">{t('settings.guestCta')}</p>
-          <ButtonLink href="/signup">{t('nav.createAccount')}</ButtonLink>
-        </Card>
-      )}
+      {user?.is_guest && <GuestNotice expiresAt={user.guest_expires_at ? new Date(user.guest_expires_at).toISOString() : null} />}
 
       {user && (
         <section aria-labelledby="data">

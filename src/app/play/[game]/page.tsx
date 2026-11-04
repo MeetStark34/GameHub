@@ -23,6 +23,17 @@ export default async function PlayPage({ params, searchParams }: Props) {
   if (!target) notFound();
   const { game, mode, difficulty } = target;
   // Already loaded by the root layout (memoised per request): no extra query.
-  const hasSession = !!(await currentUser());
-  return <PlayClient key={`${game}-${mode}-${difficulty}`} game={game} mode={mode} difficulty={difficulty} hasSession={hasSession} />;
+  const user = await currentUser();
+  // Signed-out visitors become guests on their first move, so they see the guest warning too.
+  const guestExpiresAt = !user ? null : user.is_guest && user.guest_expires_at ? new Date(user.guest_expires_at).toISOString() : undefined;
+  return (
+    <PlayClient
+      key={`${game}-${mode}-${difficulty}`}
+      game={game}
+      mode={mode}
+      difficulty={difficulty}
+      hasSession={!!user}
+      guestExpiresAt={guestExpiresAt}
+    />
+  );
 }

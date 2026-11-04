@@ -39,6 +39,9 @@ that rewards consistency without punishing anyone.
    One Dark, Solarized, Cyberpunk, OLED, Catppuccin, GitHub, Tokyo Night.
 9. Display badges (Developer, Moderator, Tester, Founder, Contributor) are
    cosmetic. **Authorization comes only from the `user_roles` table.**
+10. **Guest accounts are temporary**: deleted with all their data 12 hours
+    after creation (UTC, server-side, scheduled cleanup). Players are warned
+    wherever they play as guests; registering keeps their progress.
 
 ## Engineering principles
 

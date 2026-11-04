@@ -71,6 +71,19 @@ Apply to the configured database with `npm run db:migrate:env` (reads
 users, on delete set null). Additive only. History of every change is in
 `admin_audit_log` (`xp-freeze` / `xp-unfreeze`).
 
+## 0006_guest_expiry
+`users.guest_expires_at timestamptz`: set only for guests, exactly 12 hours
+after `created_at`; constraint `users_guest_expiry` requires
+`is_guest = (guest_expires_at is not null)`; partial index on it for guests.
+Existing guests were backfilled with `created_at + 12 h`. Table
+`guest_cleanup_log (id, ran_at, source, deleted_guests, deleted_puzzles)`:
+counts only, pruned after 30 days, RLS on, anon/authenticated revoked.
+Function `purge_expired_guests(source text, limit int)` deletes expired
+guests (same scope as Account deletion below, plus the guests' own Unlimited
+puzzles) and logs the run; EXECUTE revoked from public/anon/authenticated.
+Scheduled by pg_cron, not by the migration: `scripts/guest-cleanup-cron.sql`.
+Additive only: the migration itself deletes nothing.
+
 ## Admin audit actions
 `xp-add`, `xp-remove` (amount, before, after, xpFrozen, reason),
 `streak-adjust` (kind, amount, before, after, reason), `xp-freeze` /

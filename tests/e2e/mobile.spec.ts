@@ -26,3 +26,19 @@ test('mobile: bottom nav, no horizontal overflow, playable board', async ({ page
   expect(d!.x).toBeGreaterThanOrEqual(0); // popover stays on screen
   expect(d!.x + d!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
 });
+
+test('mobile: Queens Auto X toggle fits and works, guest warning fits', async ({ page }) => {
+  await page.goto('/play/queens?mode=unlimited&difficulty=expert');
+  const toggle = page.getByRole('button', { name: /Auto X/ });
+  await expect(toggle).toBeVisible();
+  const b = await toggle.boundingBox();
+  expect(b!.x + b!.width).toBeLessThanOrEqual(page.viewportSize()!.width);
+  await toggle.click();
+  await expect(toggle).toHaveAttribute('aria-pressed', 'true');
+  const crown = page.locator('[role="grid"] [data-r="4"][data-c="4"]');
+  await crown.click();
+  await crown.click();
+  await expect(page.locator('[role="grid"] [data-auto-x]').first()).toBeVisible();
+  await expect(page.getByRole('note', { name: 'Temporary guest account' })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(1);
+});

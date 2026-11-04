@@ -32,25 +32,51 @@ export function checkQueens(puzzle: QueensPuzzle, crowns: Cell[]): Msg | null {
   return null;
 }
 
+/**
+ * True when crowns on these two distinct cells cannot both be in a solution:
+ * same row, same column, same colour region, or touching (diagonals too).
+ * The single source of the pairwise rule for live highlighting and Auto X.
+ */
+export function queensClash(puzzle: QueensPuzzle, [r1, c1]: Cell, [r2, c2]: Cell): boolean {
+  return (
+    r1 === r2 ||
+    c1 === c2 ||
+    puzzle.regions[r1][c1] === puzzle.regions[r2][c2] ||
+    (Math.abs(r1 - r2) <= 1 && Math.abs(c1 - c2) <= 1)
+  );
+}
+
 /** Cells that conflict with another crown (for live UI highlighting). */
 export function queensConflicts(puzzle: QueensPuzzle, crowns: Cell[]): Set<string> {
   const bad = new Set<string>();
   for (let i = 0; i < crowns.length; i++) {
     for (let j = i + 1; j < crowns.length; j++) {
-      const [r1, c1] = crowns[i];
-      const [r2, c2] = crowns[j];
-      const clash =
-        r1 === r2 ||
-        c1 === c2 ||
-        puzzle.regions[r1][c1] === puzzle.regions[r2][c2] ||
-        (Math.abs(r1 - r2) <= 1 && Math.abs(c1 - c2) <= 1);
-      if (clash) {
-        bad.add(`${r1},${c1}`);
-        bad.add(`${r2},${c2}`);
+      if (queensClash(puzzle, crowns[i], crowns[j])) {
+        bad.add(`${crowns[i][0]},${crowns[i][1]}`);
+        bad.add(`${crowns[j][0]},${crowns[j][1]}`);
       }
     }
   }
   return bad;
+}
+
+/**
+ * Auto X: every cell (as "r,c") that can no longer hold a crown because it
+ * clashes with a crown already on the board. Crown cells are never included.
+ * Derived from the crowns alone, so it is recomputed, never stored.
+ */
+export function queensBlockedCells(puzzle: QueensPuzzle, crowns: Cell[]): Set<string> {
+  const n = puzzle.size;
+  const crownKeys = new Set(crowns.map(([r, c]) => `${r},${c}`));
+  const blocked = new Set<string>();
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      const key = `${r},${c}`;
+      if (crownKeys.has(key)) continue;
+      if (crowns.some((crown) => queensClash(puzzle, crown, [r, c]))) blocked.add(key);
+    }
+  }
+  return blocked;
 }
 
 /** First solution (column per row), or null. Used by tests and tooling. */

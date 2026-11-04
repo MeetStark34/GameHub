@@ -23,7 +23,7 @@ export const POST = route(async (req) => {
   // Fresh session for the member account (guest sessions are replaced).
   if (current) await db.query('delete from auth_sessions where user_id = $1', [user.id]);
   await applyBootstrapAdmin(db, user);
-  const { token, expires } = await createSession(db, user.id, false);
+  const { token, expires } = await createSession(db, user.id, null);
   await setSessionCookie(token, expires);
   return { ok: true, handle: user.handle };
 });

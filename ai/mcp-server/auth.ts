@@ -30,7 +30,8 @@ export async function resolvePrincipal(q: Queryable, token: string, now = new Da
   const row = await maybeOne<{ id: string; handle: string; is_guest: boolean }>(
     q,
     `select u.id, u.handle, u.is_guest from auth_sessions s join users u on u.id = s.user_id
-     where s.id = $1 and s.expires_at > $2::timestamptz`,
+     where s.id = $1 and s.expires_at > $2::timestamptz
+       and (not u.is_guest or u.guest_expires_at > $2::timestamptz)`,
     [sha256(token), now.toISOString()],
   );
   if (!row) throw new Error('GameHub session token is unknown or expired. Sign in again / create a new token.');

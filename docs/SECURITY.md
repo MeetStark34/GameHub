@@ -5,7 +5,9 @@
   still run a full scrypt (no timing oracle).
 - Session cookie `gh_session`: 32 random bytes, httpOnly, `SameSite=Lax`,
   `Secure` in production. Only the SHA-256 hash is stored. 30 days for
-  members, 365 for guests. Password reset deletes all sessions.
+  members; a guest session ends when the guest account expires, 12 hours
+  after it was created, and expired guests are rejected on every request
+  (D-042). Password reset deletes all sessions.
 - Rate limits (Postgres-backed): login 30/15 min per IP and 8/15 min per
   email; sign-up 10/hour per IP; forgot-password 5/hour per IP; Unlimited
   starts 30/min per user.

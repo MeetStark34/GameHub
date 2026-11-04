@@ -49,7 +49,7 @@ export async function buildFixture(): Promise<Fixture> {
   await play(db, demo.id, 'queens', 'unlimited', new Date('2026-03-10T09:00:00Z'), 35);
   await play(db, demo.id, 'queens', 'unlimited', new Date('2026-03-10T09:10:00Z'), 45);
   await play(db, other.id, 'zip', 'daily', new Date('2026-03-09T10:00:00Z'), 20);
-  const { token } = await createSession(db, demo.id, false, new Date('2026-03-10T07:00:00Z'));
+  const { token } = await createSession(db, demo.id, null, new Date('2026-03-10T07:00:00Z'));
   const memoryDir = fs.mkdtempSync(path.join(os.tmpdir(), 'gamehub-ai-mem-'));
 
   const aiDb = { ...aiDbFrom(db, 'test'), close: async () => {} };

@@ -54,6 +54,14 @@ then `docs/DAILY.md` and `docs/I18N.md` for the Phase 22 systems.
 4. Expand Pinpoint categories (Daily pool) and the Crossclimb clue bank.
 5. UI E2E for Crossclimb and Pinpoint full solves; axe audit.
 
+## Guest expiry + Auto X notes (2026-11-04)
+- Guests: `GUEST_TTL_HOURS` in src/server/users.ts; never create a guest
+  without `guest_expires_at` (the check constraint rejects it).
+- New per-user tables must keep `on delete cascade` from users: both
+  `purgeUser` and `purge_expired_guests()` rely on it.
+- Production cleanup is the pg_cron job `gamehub-guest-cleanup`
+  (`npm run ops:guest-cleanup`); check `guest_cleanup_log`.
+
 ## Rules that must hold
 - Rewards only through server services; every reward has an idempotency key.
 - Migrations are append-only. Bump `generatorVersion` when a seed's output changes.
@@ -64,4 +72,4 @@ then `docs/DAILY.md` and `docs/I18N.md` for the Phase 22 systems.
   in `getLeaderboard`.
 
 ## Tests
-141 unit/integration, 5 live (opt-in), 19 E2E, all passing.
+233 unit/integration, 7 live (opt-in), 24 E2E, all passing (2026-11-04).

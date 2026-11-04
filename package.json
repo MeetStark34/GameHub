@@ -32,7 +32,9 @@
     "ai:check": "node --conditions=react-server --import tsx ai/scripts/check-setup.ts",
     "test:ai": "vitest run ai",
     "test:ai:live": "node --env-file=.env.local scripts/test-ai-live.mjs",
-    "ops:keep-warm": "node --env-file=.env.local scripts/apply-sql.mjs scripts/keep-warm.sql"
+    "ops:keep-warm": "node --env-file=.env.local scripts/apply-sql.mjs scripts/keep-warm.sql",
+    "ops:guest-cleanup": "node --env-file=.env.local scripts/apply-sql.mjs scripts/guest-cleanup-cron.sql",
+    "ops:purge-guests": "node --env-file=.env.local scripts/purge-guests.mjs"
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.13",

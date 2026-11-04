@@ -1,5 +1,23 @@
 # Current state
 
+## Temporary guests + Queens Auto X (2026-11-04, D-042, D-043)
+- Guest accounts expire exactly 12 hours after creation (server UTC). An
+  expired guest is signed out on its next request; `purge_expired_guests()`
+  deletes it with all its records. Migration `0006_guest_expiry.sql` (column
+  `users.guest_expires_at`, constraint, index, `guest_cleanup_log`, function).
+- Production schedule: pg_cron job `gamehub-guest-cleanup`, every 15 minutes
+  (`scripts/guest-cleanup-cron.sql`, `npm run ops:guest-cleanup`).
+  Existing guests: one-off `npm run ops:purge-guests` (report, then
+  `--execute --expect=N`).
+- Guest warning (`src/components/guest-notice.tsx`) on the dashboard,
+  settings, sign-up and play pages, in all four languages; members never see it.
+- Queens: Auto X toggle under the board; derived marks via
+  `queensBlockedCells` (src/games/queens/logic.ts).
+- Gates: lint, typecheck, 233 unit/integration (7 opt-in live skipped),
+  24 E2E (desktop + mobile), build: all passing.
+- Production status: see the "Production rollout" lines below.
+- Production rollout: PENDING (needs the database credentials, see AI_HANDOFF).
+
 ## Faster navigation and game opening (2026-11-04, D-038 to D-040)
 Local production build, 80 ms of added network latency (before -> after):
 

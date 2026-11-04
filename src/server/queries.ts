@@ -28,7 +28,7 @@ export interface DailyGameStatus {
 }
 
 export interface PlayerSummary {
-  user: { id: string; handle: string; displayName: string; isGuest: boolean; title: string | null };
+  user: { id: string; handle: string; displayName: string; isGuest: boolean; title: string | null; guestExpiresAt: string | null };
   xp: number;
   rank: RankInfo;
   streaks: { normal: StreakView; truePlayer: StreakView };
@@ -94,9 +94,9 @@ export async function getPlayerSummary(db: Queryable, userId: string, now: Date)
   // Independent reads: issued together so the page waits for one round trip
   // to the database (bounded by the pool size) instead of eleven in a row.
   const [user, statsRow, streaks, sessions, activity, mastery, unlocked, unread, recent, badges] = await Promise.all([
-    maybeOne<{ id: string; handle: string; display_name: string; is_guest: boolean; title: string | null }>(
+    maybeOne<{ id: string; handle: string; display_name: string; is_guest: boolean; title: string | null; guest_expires_at: Date | null }>(
       db,
-      'select id, handle, display_name, is_guest, title from users where id = $1',
+      'select id, handle, display_name, is_guest, title, guest_expires_at from users where id = $1',
       [userId],
     ),
     maybeOne<StatsRow>(db, 'select * from user_stats where user_id = $1', [userId]),
@@ -133,7 +133,14 @@ export async function getPlayerSummary(db: Queryable, userId: string, now: Date)
     };
   });
   return {
-    user: { id: user.id, handle: user.handle, displayName: user.display_name, isGuest: user.is_guest, title: user.title },
+    user: {
+      id: user.id,
+      handle: user.handle,
+      displayName: user.display_name,
+      isGuest: user.is_guest,
+      title: user.title,
+      guestExpiresAt: user.guest_expires_at ? new Date(user.guest_expires_at).toISOString() : null,
+    },
     xp: stats.total_xp,
     rank: rankFromXp(stats.total_xp, PLAYER_RANKS),
     streaks: { normal, truePlayer },

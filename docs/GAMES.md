@@ -33,7 +33,7 @@ Highlights for achievements: `werd:first-guess`, `pinpoint:one-clue`.
 
 | Board | Input |
 |---|---|
-| Queens | Tap cycles ×/crown; drag paints ×; arrows + Space/Q/X |
+| Queens | Tap cycles ×/crown; drag paints ×; arrows + Space/Q/X. **Auto X** toggle: × on every cell a placed crown rules out (row, column, colour, touching); derived from the crowns, never overwrites the player's own × (D-043) |
 | Mini Sudoku | Select cell, number pad or digits; arrows |
 | Tango | Tap cycles sun/moon/empty; S/M/Space |
 | Zip | Drag from the path end; tap a path cell to truncate; arrows / Backspace |

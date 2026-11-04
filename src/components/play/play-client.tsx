@@ -12,6 +12,7 @@ import { useI18n } from '@/i18n/client';
 import type { Msg } from '@/i18n/translate';
 import { playTarget } from '@/lib/play-url';
 import { GameGlyph } from '@/components/brand';
+import { GuestNotice } from '@/components/guest-notice';
 import { useToasts, usePrefs } from '@/components/providers';
 import { Button, ButtonLink, Card, cn } from '@/components/ui';
 import { BOARD_LOADERS, type BoardComponent } from './boards';
@@ -54,7 +55,20 @@ function afterPaint(fn: () => void) {
   requestAnimationFrame(() => setTimeout(fn, 0));
 }
 
-export function PlayClient({ game, mode, difficulty, hasSession }: { game: GameId; mode: GameMode; difficulty: Difficulty; hasSession: boolean }) {
+/** guestExpiresAt: undefined for members (no guest warning), null for a signed-out visitor, else the guest's expiry. */
+export function PlayClient({
+  game,
+  mode,
+  difficulty,
+  hasSession,
+  guestExpiresAt,
+}: {
+  game: GameId;
+  mode: GameMode;
+  difficulty: Difficulty;
+  hasSession: boolean;
+  guestExpiresAt?: string | null;
+}) {
   const meta = GAMES[game];
   const router = useRouter();
   const { push } = useToasts();
@@ -218,6 +232,8 @@ export function PlayClient({ game, mode, difficulty, hasSession }: { game: GameI
           </ButtonLink>
         </div>
       )}
+
+      {guestExpiresAt !== undefined && <GuestNotice expiresAt={guestExpiresAt} className="mt-6" />}
     </div>
   );
 }

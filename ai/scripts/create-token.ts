@@ -29,7 +29,7 @@ async function main() {
   try {
     const user = await verifyLogin(db, email, password);
     if (!user) throw new Error('Wrong email or password.');
-    const { token, expires } = await createSession(db, user.id, user.is_guest);
+    const { token, expires } = await createSession(db, user.id, user.is_guest ? user.guest_expires_at : null);
     const file = path.join(process.cwd(), '.data', 'ai-live', 'session-token');
     fs.mkdirSync(path.dirname(file), { recursive: true });
     fs.writeFileSync(file, token, { mode: 0o600 });

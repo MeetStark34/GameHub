@@ -1,3 +1,4 @@
+import { GuestNotice } from '@/components/guest-notice';
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ArrowRight, Award, Crown, Flame, Infinity as InfinityIcon, Sparkles } from 'lucide-react';
@@ -58,15 +59,8 @@ export default async function Dashboard() {
             ))}
           </div>
         </div>
-        {s.user.isGuest && (
-          <Card className="flex items-center gap-3 p-3 text-sm">
-            <span>{t('dashboard.savedToBrowser')}</span>
-            <ButtonLink href="/signup" size="sm">
-              {t('dashboard.claim')}
-            </ButtonLink>
-          </Card>
-        )}
       </section>
+      {s.user.isGuest && <GuestNotice expiresAt={s.user.guestExpiresAt} />}
 
       <Card className="overflow-hidden">
         <div className="grid gap-5 p-5 md:grid-cols-[1fr_auto] md:items-center">

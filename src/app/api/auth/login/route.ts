@@ -17,7 +17,7 @@ export const POST = route(async (req) => {
   const user = await verifyLogin(db, email, password);
   if (!user) throw new HttpError(401, 'errors.badLogin');
   await applyBootstrapAdmin(db, user);
-  const { token, expires } = await createSession(db, user.id, false);
+  const { token, expires } = await createSession(db, user.id, null);
   await setSessionCookie(token, expires);
   return { ok: true, handle: user.handle };
 });

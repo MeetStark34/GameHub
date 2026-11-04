@@ -39,7 +39,7 @@ export async function currentOrGuestUser(): Promise<UserRow> {
   if (existing) return existing;
   const db = await getDb();
   const guest = await createGuest(db);
-  const { token, expires } = await createSession(db, guest.id, true);
+  const { token, expires } = await createSession(db, guest.id, guest.guest_expires_at);
   await setSessionCookie(token, expires);
   return guest;
 }

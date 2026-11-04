@@ -102,7 +102,7 @@ async function main() {
   await play(db, rival.id, 'queens', 'daily', at(addDays(today, -1), 10, 0), 45);
   await play(db, hidden.id, 'zip', 'daily', at(addDays(today, -1), 11, 0), 30);
 
-  const { token } = await createSession(db, demo.id, false, now);
+  const { token } = await createSession(db, demo.id, null, now);
   fs.writeFileSync(paths.tokenFile, token, { mode: 0o600 });
   const [s] = await db.query<{ total_xp: number; games_completed: number }>('select total_xp, games_completed from user_stats where user_id = $1', [demo.id]);
   await db.close();

@@ -339,3 +339,50 @@ account). It is idempotent and removable (`select
 cron.unschedule('gamehub-keep-warm')`). Apply with `npm run ops:keep-warm`
 (needs DATABASE_URL in .env.local) or paste the file into the Supabase SQL
 editor.
+
+## D-042 Guest accounts expire 12 hours after creation (2026-11-04)
+Guests were created on a player's first move with a 365-day session and kept
+forever. Now:
+- **Expiry.** `createGuest` stamps `users.guest_expires_at = created_at + 12 h`
+  from the server clock (UTC); the guest session cookie and `auth_sessions`
+  row end at the same instant. A check constraint keeps `is_guest` and
+  `guest_expires_at` in step (`0006_guest_expiry.sql`); sign-up upgrading a
+  guest in place clears it, and only works while the guest is unexpired.
+- **Access ends at expiry, not at cleanup.** `userForToken` (and the MCP
+  server's `resolvePrincipal`) reject an expired guest even if its rows still
+  exist, so nothing depends on the cleanup job's timing or on a browser.
+- **Deletion.** `purge_expired_guests()` (Postgres function, migration 0006)
+  deletes expired guests in one transaction with exactly the scope of
+  `purgeUser`: every per-user table cascades from `users`, then the guests'
+  own Unlimited puzzles go unless another session uses them. Daily Set
+  puzzles, `daily_sets`, `daily_puzzle_history` and audit rows are kept.
+  Only unmistakable guests qualify (is_guest, no email, no password,
+  `guest-` handle, no role). Idempotent; `skip locked` makes concurrent runs
+  safe.
+- **Schedule.** pg_cron inside Supabase runs it every 15 minutes
+  (`scripts/guest-cleanup-cron.sql`, applied with `npm run ops:guest-cleanup`).
+  Chosen over Vercel Cron: Hobby cron runs at most once a day, and the job
+  belongs next to the data (the same pattern as D-041). A guest is therefore
+  unusable at 12 h and its data is gone within 12 h 15 min.
+- **Logging.** `guest_cleanup_log` stores one row per run: time, source and
+  counts only (no ids, handles or emails); rows older than 30 days are pruned.
+- **One-off cleanup.** `npm run ops:purge-guests` reports the guests and the
+  records that go with them, read-only; `-- --execute --expect=N` deletes
+  them in one transaction and rolls back unless exactly N guests went and the
+  registered-account count, admins and `@mstark` are unchanged.
+- **UI.** `GuestNotice` (dashboard, settings, sign-up, play pages, including
+  signed-out visitors who become guests on their first move) states the
+  12-hour deletion and shows the deletion time in UTC. Never shown to members.
+
+## D-043 Queens Auto X is derived, not stored (2026-11-04)
+Auto X (Queens board toggle, remembered per browser in `gh-queens-auto-x`)
+shows an × on every cell that clashes with a placed crown. The marks are
+computed on each render by `queensBlockedCells`, which uses `queensClash`,
+the same pairwise rule as the live conflict highlighting (row, column, colour
+region, touching incl. diagonals); validation (`checkQueens`) is unchanged.
+Because they are never written to the board state, recalculation after a
+crown is removed or moved cannot erase the player's own × marks, crown cells
+are never marked, and nothing reaches the server (only crowns are
+submitted), so automatic marks can never count as wrong moves. A tap on an
+automatic × places a crown (it behaves like an ×); drag-painting skips
+automatic cells so they stay automatic. Off = the previous behaviour.
