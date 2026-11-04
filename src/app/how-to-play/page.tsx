@@ -30,7 +30,7 @@ export default async function HowToPlay() {
               ))}
             </ul>
             <p className="mt-2 text-xs text-muted">{DIFFICULTIES.map((d) => `${t(`difficulty.${d}`)}: ${t(`games.${g}.difficulty.${d}`)}`).join(' · ')}</p>
-            <Link href={`/play/${g}?mode=unlimited&difficulty=easy`} className="mt-2 inline-block text-sm font-semibold text-accent">
+            <Link href={`/play/${g}?mode=unlimited&difficulty=easy`} prefetch={false} className="mt-2 inline-block text-sm font-semibold text-accent">
               {t('howTo.tryIt')}
             </Link>
           </Card>

@@ -224,3 +224,36 @@ display name, roles, XP; no email), then the FK nulls its target. Guards:
 retype the handle, never yourself, never `DEVELOPER.handle`, never the last
 admin. Soft-delete was rejected: the schema has no "deleted" state, and
 every query would need to learn to skip it.
+
+## D-034 Functions run in the database's region (2026-11-04)
+`vercel.json` pins functions to `dub1` (Dublin, AWS eu-west-1), the region
+of the Supabase pooler. Vercel's default, `iad1` (Washington, D.C.), put an
+Atlantic round trip (~75 ms) on every query; the live site measured 350-450
+ms for a single `select 1` (`/api/health`) and about 5 s to finish a Daily
+game. If the database moves, move `regions` with it. Verify on a deployment
+with the `x-vercel-id` response header (`<edge>::dub1::<id>`). On Vercel
+builds (`VERCEL` set) PGlite is excluded from function traces: 2.5 MB per
+function instead of 22.8 MB.
+
+## D-035 No route `loading.tsx`; links show a delayed pending hint
+React keeps a Suspense fallback on screen for at least 300 ms
+(`FALLBACK_THROTTLE_MS` in the React build Next ships), so a `loading.tsx`
+skeleton made every navigation take 300 ms or more even when the server
+answered in 40 ms. Navigations instead keep the current page and show
+`LinkPending` (`useLinkStatus`) on the clicked link, which only appears after
+150 ms. Board chunks load in an effect rather than through `next/dynamic` for
+the same reason. Sounds and reward toasts start after the result has painted:
+the first sound creates the AudioContext, which blocks the main thread
+(measured up to 2 s on Windows).
+
+## D-036 Hot paths count round trips
+Every query costs one network round trip, so independent queries are issued
+together: inside a transaction `Promise.all` pipelines them on its connection
+(postgres.js and PGlite both execute them in the order issued); outside one
+they run in parallel, so only reads are grouped there. `processCompletion`
+passes the XP-freeze flag from its row-locked `user_stats` read to the reward
+helpers instead of re-reading it per award. A new Unlimited puzzle and its
+session are one `insert ... with` statement. `actOnSession` locks and reads
+the session in one statement and replays a completed session with a fresh
+read (a request that waited on the lock cannot see the committed completion
+through the first statement's join).

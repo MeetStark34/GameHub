@@ -4,6 +4,7 @@ import { GAMES } from '@/config/games';
 import { DIFFICULTIES, GAME_IDS } from '@/games/types';
 import { getTranslator } from '@/i18n/server';
 import { GameTile } from '@/components/game-card';
+import { LinkPending } from '@/components/layout/link-pending';
 import { Card, PageHeader, cn } from '@/components/ui';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -33,7 +34,8 @@ export default async function UnlimitedPage() {
                 <Link
                   key={d}
                   href={`/play/${g}?mode=unlimited&difficulty=${d}`}
-                  className={cn('rounded-xl border border-border p-2 text-center transition hover:-translate-y-0.5 hover:border-accent hover:bg-accent-soft')}
+                  prefetch={false}
+                  className={cn('relative rounded-xl border border-border p-2 text-center transition hover:-translate-y-0.5 hover:border-accent hover:bg-accent-soft')}
                 >
                   <span className="block text-sm font-semibold">{t(`difficulty.${d}`)}</span>
                   <span className="block text-[11px] leading-tight text-muted">{t(`games.${g}.difficulty.${d}`)}</span>
@@ -42,6 +44,7 @@ export default async function UnlimitedPage() {
                       <span key={k} className={cn('size-1.5 rounded-full', k <= i ? 'bg-accent' : 'bg-subtle')} />
                     ))}
                   </span>
+                  <LinkPending className="inset-x-3 bottom-1" />
                 </Link>
               ))}
             </div>

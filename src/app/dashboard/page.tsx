@@ -155,7 +155,7 @@ export default async function Dashboard() {
           </SectionTitle>
           <Card className="divide-y divide-border">
             {s.mastery.map((m) => (
-              <Link key={m.game} href={`/play/${m.game}?mode=unlimited`} className="flex items-center gap-3 p-3 hover:bg-subtle/60">
+              <Link key={m.game} href={`/play/${m.game}?mode=unlimited`} prefetch={false} className="flex items-center gap-3 p-3 hover:bg-subtle/60">
                 <GameTile game={m.game} className="size-8" />
                 <span className="w-28 shrink-0 text-sm font-semibold">{GAMES[m.game].name}</span>
                 <span className="flex-1">

@@ -205,6 +205,18 @@ body {
   25% { transform: translateX(-4px); }
   75% { transform: translateX(4px); }
 }
+/* Navigation pending hint (LinkPending): shown only after 150 ms, hidden at once. */
+.link-pending { opacity: 0; transform-origin: center; }
+.link-pending[data-pending] {
+  opacity: 1;
+  transition: opacity 0.2s ease 0.15s;
+  animation: link-pending 0.9s ease-in-out 0.15s infinite;
+}
+@keyframes link-pending {
+  0%, 100% { transform: scaleX(0.3); }
+  50% { transform: scaleX(1); }
+}
+
 .animate-toast-in { animation: toast-in 0.28s cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
 .animate-shine { animation: shine 1.4s ease-out 0.25s both; }
 .animate-pop { animation: pop 0.32s ease-out both; }

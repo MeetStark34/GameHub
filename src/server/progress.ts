@@ -55,6 +55,14 @@ export async function isXpFrozen(tx: Queryable, userId: string): Promise<boolean
 }
 
 /**
+ * The account's XP-freeze flag, when the caller already read it from the
+ * user_stats row it holds locked in this transaction (it cannot change until
+ * commit). Passing it saves one query per award and notification; when it is
+ * omitted, the flag is read from the database as before.
+ */
+export type KnownFrozen = boolean | undefined;
+
+/**
  * Idempotent XP award: the single gate every XP change goes through.
  * Returns true if XP was newly applied. While the account's XP is frozen,
  * gameplay awards are recorded in the ledger as 0 under `frozen:<reason>`
@@ -67,10 +75,10 @@ export async function awardXp(
   amount: number,
   reason: string,
   key: string,
-  opts: { bypassFreeze?: boolean } = {},
+  opts: { bypassFreeze?: boolean; frozen?: KnownFrozen } = {},
 ): Promise<boolean> {
   if (!amount) return false;
-  const frozen = !opts.bypassFreeze && (await isXpFrozen(tx, userId));
+  const frozen = !opts.bypassFreeze && (opts.frozen ?? (await isXpFrozen(tx, userId)));
   const rows = await tx.query(
     `insert into xp_ledger (user_id, amount, reason, idempotency_key) values ($1, $2, $3, $4)
      on conflict (user_id, idempotency_key) do nothing returning id`,
@@ -84,9 +92,9 @@ export async function awardXp(
   return true;
 }
 
-export async function notify(tx: Queryable, userId: string, e: RewardEvent): Promise<void> {
+export async function notify(tx: Queryable, userId: string, e: RewardEvent, frozen?: KnownFrozen): Promise<void> {
   // A frozen account earned no XP, so its notifications must not claim any.
-  const xp = e.xp && !(await isXpFrozen(tx, userId)) ? e.xp : null;
+  const xp = e.xp && !(frozen ?? (await isXpFrozen(tx, userId))) ? e.xp : null;
   await tx.query('insert into notifications (user_id, kind, title, body, data) values ($1, $2, $3, $4, $5::jsonb)', [
     userId,
     e.kind,
@@ -144,13 +152,14 @@ export async function advanceStreak(
   kind: StreakKind,
   day: UtcDate,
   events: RewardEvent[],
+  frozen?: KnownFrozen,
 ): Promise<{ current: number; advanced: boolean }> {
   const before = await loadStreak(tx, userId, kind, true);
   const { state, advanced } = recordQualifyingDay(before, day);
   if (!advanced) return { current: before.current, advanced };
   await saveStreak(tx, userId, kind, state);
   const xp = streakMilestoneXp(kind === 'normal' ? 'normal' : 'truePlayer', state.current);
-  if (xp && (await awardXp(tx, userId, xp, `streak-${kind}-milestone`, `streak:${kind}:${day}`))) {
+  if (xp && (await awardXp(tx, userId, xp, `streak-${kind}-milestone`, `streak:${kind}:${day}`, { frozen }))) {
     const name = kind === 'normal' ? 'Normal Streak' : 'True Player Streak';
     const streakKey = kind === 'normal' ? '@streak.normal' : '@streak.truePlayer';
     const e: RewardEvent = {
@@ -161,7 +170,7 @@ export async function advanceStreak(
       xp,
     };
     events.push(e);
-    await notify(tx, userId, e);
+    await notify(tx, userId, e, frozen);
   }
   return { current: state.current, advanced };
 }
@@ -182,6 +191,7 @@ export async function grantPunch(
   source: string,
   key: string,
   events: RewardEvent[],
+  frozen?: KnownFrozen,
 ): Promise<PunchOutcome | null> {
   const inserted = await tx.query(
     `insert into card_events (user_id, kind, source, idempotency_key) values ($1, 'punch', $2, $3)
@@ -196,7 +206,7 @@ export async function grantPunch(
        cards_earned = cards_earned + $4, cards_converted = cards_converted + $5 where user_id = $1`,
     [userId, state.punchProgress, state.cardsHeld, outcome === 'card-created' ? 1 : 0, outcome === 'card-converted' ? 1 : 0],
   );
-  await awardXp(tx, userId, XP_ECONOMY.punchEarned, 'punch', `${key}:xp`);
+  await awardXp(tx, userId, XP_ECONOMY.punchEarned, 'punch', `${key}:xp`, { frozen });
   const punchEvent: RewardEvent = {
     kind: 'punch',
     title: 'Punch earned',
@@ -216,7 +226,7 @@ export async function grantPunch(
     xp: XP_ECONOMY.punchEarned,
   };
   events.push(punchEvent);
-  await notify(tx, userId, punchEvent);
+  await notify(tx, userId, punchEvent, frozen);
 
   if (outcome === 'card-created') {
     await tx.query(`insert into card_events (user_id, kind, source, idempotency_key) values ($1, 'card_created', $2, $3)`, [
@@ -224,7 +234,7 @@ export async function grantPunch(
       source,
       `${key}:card`,
     ]);
-    await awardXp(tx, userId, XP_ECONOMY.cardCreated, 'card-created', `${key}:card:xp`);
+    await awardXp(tx, userId, XP_ECONOMY.cardCreated, 'card-created', `${key}:card:xp`, { frozen });
     const e: RewardEvent = {
       kind: state.cardsHeld >= REPAIR_CARDS.maxCards ? 'pocket-full' : 'card-created',
       title: state.cardsHeld >= REPAIR_CARDS.maxCards ? 'Gold Repair Card earned. Pocket full!' : 'Gold Repair Card earned',
@@ -236,14 +246,14 @@ export async function grantPunch(
       xp: XP_ECONOMY.cardCreated,
     };
     events.push(e);
-    await notify(tx, userId, e);
+    await notify(tx, userId, e, frozen);
   } else if (outcome === 'card-converted') {
     await tx.query(`insert into card_events (user_id, kind, source, idempotency_key) values ($1, 'card_converted', $2, $3)`, [
       userId,
       source,
       `${key}:convert`,
     ]);
-    await awardXp(tx, userId, XP_ECONOMY.cardConverted, 'card-converted', `${key}:convert:xp`);
+    await awardXp(tx, userId, XP_ECONOMY.cardConverted, 'card-converted', `${key}:convert:xp`, { frozen });
     const e: RewardEvent = {
       kind: 'card-converted',
       title: 'Pocket full: card converted',
@@ -255,25 +265,31 @@ export async function grantPunch(
       xp: XP_ECONOMY.cardConverted,
     };
     events.push(e);
-    await notify(tx, userId, e);
+    await notify(tx, userId, e, frozen);
   }
   return outcome;
 }
 
-/** Builds the stats snapshot the achievement engine evaluates. */
+/**
+ * Builds the stats snapshot the achievement engine evaluates. The reads are
+ * independent and lock nothing, so they are issued together: in a
+ * transaction they are pipelined on its connection (one round trip, still
+ * executed in order), elsewhere they run in parallel.
+ */
 export async function loadAchievementStats(tx: Queryable, userId: string, today: UtcDate): Promise<AchievementStats> {
-  const s = await one<StatsRow>(tx, 'select * from user_stats where user_id = $1', [userId]);
-  const mastery = await tx.query<{ game: GameId; xp: number; completions: number }>(
-    'select game, xp, completions from mastery where user_id = $1',
-    [userId],
-  );
-  const act = await maybeOne<{ games_completed: number; hours_mask: number; per_game: Record<string, number> }>(
-    tx,
-    'select games_completed, hours_mask, per_game from daily_activity where user_id = $1 and utc_date = $2',
-    [userId, today],
-  );
-  const normal = viewStreak(await loadStreak(tx, userId, 'normal'), today);
-  const tp = viewStreak(await loadStreak(tx, userId, 'true_player'), today);
+  const [s, mastery, act, normalRow, tpRow] = await Promise.all([
+    one<StatsRow>(tx, 'select * from user_stats where user_id = $1', [userId]),
+    tx.query<{ game: GameId; xp: number; completions: number }>('select game, xp, completions from mastery where user_id = $1', [userId]),
+    maybeOne<{ games_completed: number; hours_mask: number; per_game: Record<string, number> }>(
+      tx,
+      'select games_completed, hours_mask, per_game from daily_activity where user_id = $1 and utc_date = $2',
+      [userId, today],
+    ),
+    loadStreak(tx, userId, 'normal'),
+    loadStreak(tx, userId, 'true_player'),
+  ]);
+  const normal = viewStreak(normalRow, today);
+  const tp = viewStreak(tpRow, today);
   const byGame = Object.fromEntries(GAME_IDS.map((g) => [g, 0])) as Record<GameId, number>;
   const masteryRankIndex = { ...byGame };
   for (const m of mastery) {
@@ -325,15 +341,16 @@ export async function evaluateAchievements(
   today: UtcDate,
   event: CompletionEvent | null,
   events: RewardEvent[],
+  frozen?: KnownFrozen,
 ): Promise<UnlockedAchievement[]> {
   const out: UnlockedAchievement[] = [];
   for (let pass = 0; pass < 2; pass++) {
-    const have = new Set(
-      (await tx.query<{ achievement_id: string }>('select achievement_id from achievement_unlocks where user_id = $1', [userId])).map(
-        (r) => r.achievement_id,
-      ),
-    );
-    const stats = await loadAchievementStats(tx, userId, today);
+    // Read-only and independent: one round trip (see loadAchievementStats).
+    const [unlocked, stats] = await Promise.all([
+      tx.query<{ achievement_id: string }>('select achievement_id from achievement_unlocks where user_id = $1', [userId]),
+      loadAchievementStats(tx, userId, today),
+    ]);
+    const have = new Set(unlocked.map((r) => r.achievement_id));
     const fresh = newlyUnlocked(stats, pass === 0 ? event : null, have, ACHIEVEMENTS);
     if (!fresh.length) break;
     for (const a of fresh) {
@@ -342,7 +359,7 @@ export async function evaluateAchievements(
         [userId, a.id, a.xp],
       );
       if (!ins.length) continue;
-      await awardXp(tx, userId, a.xp, 'achievement', `achievement:${a.id}`);
+      await awardXp(tx, userId, a.xp, 'achievement', `achievement:${a.id}`, { frozen });
       const u = { id: a.id, name: a.name, description: a.description, icon: a.icon, xp: a.xp };
       out.push(u);
       const e: RewardEvent = {
@@ -354,7 +371,7 @@ export async function evaluateAchievements(
         data: { achievementId: a.id, icon: a.icon },
       };
       events.push(e);
-      await notify(tx, userId, e);
+      await notify(tx, userId, e, frozen);
     }
   }
   return out;

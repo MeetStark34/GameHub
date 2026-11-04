@@ -69,7 +69,7 @@ export default async function Landing() {
         </h2>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {GAME_IDS.map((g) => (
-            <Link key={g} href={`/play/${g}?mode=unlimited&difficulty=easy`} className="group rounded-2xl border border-border bg-card p-4 transition hover:-translate-y-0.5 hover:shadow-md">
+            <Link key={g} href={`/play/${g}?mode=unlimited&difficulty=easy`} prefetch={false} className="group rounded-2xl border border-border bg-card p-4 transition hover:-translate-y-0.5 hover:shadow-md">
               <GameTile game={g} className="mb-3 size-11" />
               <p className="font-display text-lg font-bold">{GAMES[g].name}</p>
               <p className="text-sm text-muted">{t(`games.${g}.tagline`)}</p>

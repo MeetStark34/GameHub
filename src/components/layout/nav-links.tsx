@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useI18n } from '@/i18n/client';
 import { cn } from '@/components/ui';
+import { LinkPending } from './link-pending';
 
 export const NAV = [
   { href: '/dashboard', key: 'nav.dashboard' },
@@ -25,9 +26,10 @@ export function NavLinks() {
             <Link
               href={n.href}
               aria-current={active ? 'page' : undefined}
-              className={cn('whitespace-nowrap rounded-lg px-2.5 py-1.5 text-sm font-medium transition', active ? 'bg-subtle text-fg' : 'text-muted hover:text-fg')}
+              className={cn('relative whitespace-nowrap rounded-lg px-2.5 py-1.5 text-sm font-medium transition', active ? 'bg-subtle text-fg' : 'text-muted hover:text-fg')}
             >
               {t(n.key)}
+              <LinkPending className="inset-x-2.5 bottom-0" />
             </Link>
           </li>
         );

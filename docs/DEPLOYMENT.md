@@ -13,6 +13,12 @@ have not been run against a live Supabase project.
    - `RESEND_API_KEY` and `EMAIL_FROM`: needed for password-reset email
    - optional `DB_POOL_MAX` (default 5), `DB_AUTO_MIGRATE=1`
 4. Deploy, sign up with the bootstrap email, and confirm `/admin` loads.
+   **Region:** `vercel.json` runs functions in `dub1` (Dublin), next to a
+   Supabase project in `eu-west-1`. If your database is elsewhere, set
+   `regions` to the Vercel region closest to it: each page makes several
+   sequential queries, so a cross-ocean hop multiplies. Check any response's
+   `x-vercel-id` header (`<edge>::dub1::<id>`), e.g.
+   `curl -sI https://<your-app>/api/health | grep -i x-vercel-id`.
 5. Optional: pre-warm the Daily Set with a scheduled request to `/daily`
    shortly after 00:00 UTC. It is created lazily on first request anyway.
 

@@ -1,5 +1,36 @@
 # Current state
 
+## Performance on Vercel (2026-11-04)
+Live site before the fix (`stark-game-hub.vercel.app`): functions ran in
+`iad1` (Washington) while the database is in `eu-west-1` (Ireland), so every
+query crossed the Atlantic. `/api/health` (one `select 1`) took 1.5 s cold and
+350-450 ms warm. See D-034, D-035, D-036.
+
+Measured on a production build with simulated per-query latency (75 ms is
+iad1 to Ireland, as deployed before; 2 ms is dub1 to the pooler, as now
+configured):
+
+| | 75 ms before | 75 ms after | 2 ms after |
+|---|---|---|---|
+| Finish a game (last move to result) | 4.9-6.9 s | 2.8-3.0 s | 0.14-0.20 s |
+| Reopen a game | 645-734 ms | 377-394 ms | 79-120 ms |
+| Dashboard | 519-534 ms | 289-330 ms | 58-68 ms |
+| Header navigation | 316-327 ms | 277-294 ms | 33-53 ms |
+
+- `vercel.json` pins functions to `dub1`; PGlite is excluded from Vercel
+  function traces (22.8 MB to 2.5 MB per function).
+- Route `loading.tsx` files removed: React held each skeleton for at least
+  300 ms. Links show a pending hint after 150 ms instead.
+- Sounds and toasts wait for the result to paint (AudioContext creation
+  blocked the main thread for up to 2 s).
+- Fewer sequential round trips (same harness as the 2026-11-02 audit):
+  solving a Daily game about 37 instead of 62; a new Unlimited puzzle 2
+  instead of 8; opening a Daily game 3 instead of 5, and 1 when resuming.
+- After deploying, check the `x-vercel-id` header reads `...::dub1::...`.
+- Not changed: prefetches still render each linked page's root layout (about
+  one query each for signed-in players); the first request of a UTC day still
+  builds the Daily Set in about 30 sequential queries.
+
 ## Performance audit (2026-11-02)
 Measured on a production build against Postgres 16 with a simulated 30 ms
 database round trip (Vercel to Supabase pooler):

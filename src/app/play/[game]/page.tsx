@@ -4,6 +4,7 @@ import { GAMES } from '@/config/games';
 import { isDifficulty, isGameId } from '@/games/types';
 import { getTranslator } from '@/i18n/server';
 import { PlayClient } from '@/components/play/play-client';
+import { currentUser } from '@/server/auth';
 
 type Props = { params: Promise<{ game: string }>; searchParams: Promise<{ mode?: string; difficulty?: string }> };
 
@@ -20,5 +21,7 @@ export default async function PlayPage({ params, searchParams }: Props) {
   if (!isGameId(game)) notFound();
   const mode = sp.mode === 'unlimited' ? 'unlimited' : 'daily';
   const difficulty = isDifficulty(sp.difficulty) ? sp.difficulty : 'normal';
-  return <PlayClient key={`${game}-${mode}-${difficulty}`} game={game} mode={mode} difficulty={difficulty} />;
+  // Already loaded by the root layout (memoised per request): no extra query.
+  const hasSession = !!(await currentUser());
+  return <PlayClient key={`${game}-${mode}-${difficulty}`} game={game} mode={mode} difficulty={difficulty} hasSession={hasSession} />;
 }
