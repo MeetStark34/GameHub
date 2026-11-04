@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { CalendarDays, Home, Infinity as InfinityIcon, Settings, Trophy } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
 import { cn } from '@/components/ui';
+import { LinkPending } from './link-pending';
 
 /** Thumb-reachable primary navigation for phones and tablets (the top nav shows from xl). */
 export function BottomNav({ signedIn }: { signedIn: boolean }) {
@@ -25,9 +26,10 @@ export function BottomNav({ signedIn }: { signedIn: boolean }) {
           const active = path === href || (href !== '/' && path.startsWith(`${href}/`));
           return (
             <li key={href}>
-              <Link href={href} aria-current={active ? 'page' : undefined} className={cn('flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium', active ? 'text-accent' : 'text-muted')}>
+              <Link href={href} aria-current={active ? 'page' : undefined} className={cn('relative flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium', active ? 'text-accent' : 'text-muted')}>
                 <Icon className="size-5" aria-hidden />
                 <span className="max-w-full truncate px-0.5">{label}</span>
+                <LinkPending className="inset-x-5 top-0" />
               </Link>
             </li>
           );

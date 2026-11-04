@@ -1,6 +1,5 @@
 'use client';
 
-import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
@@ -18,18 +17,59 @@ import type { BoardProps } from './board-kit';
 import { ResultPanel } from './result-panel';
 
 const loading = () => <div className="mx-auto aspect-square w-full max-w-md animate-pulse rounded-2xl bg-subtle" />;
-// Code-split: each game's board only loads when that game is played.
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const BOARDS: Record<GameId, ComponentType<BoardProps<any>>> = {
-  patches: dynamic(() => import('./boards/patches-board'), { loading }),
-  sudoku: dynamic(() => import('./boards/sudoku-board'), { loading }),
-  zip: dynamic(() => import('./boards/zip-board'), { loading }),
-  werd: dynamic(() => import('./boards/werd-board'), { loading }),
-  pinpoint: dynamic(() => import('./boards/pinpoint-board'), { loading }),
-  crossclimb: dynamic(() => import('./boards/crossclimb-board'), { loading }),
-  tango: dynamic(() => import('./boards/tango-board'), { loading }),
-  queens: dynamic(() => import('./boards/queens-board'), { loading }),
+type BoardComponent = ComponentType<BoardProps<any>>;
+/**
+ * Code-split: each game's board only loads when that game is played. The
+ * chunk is fetched in parallel with the session (see useBoardChunk) rather than
+ * through next/dynamic, whose Suspense fallback made React hold the board
+ * back for its ~300 ms reveal throttle even when everything had arrived.
+ */
+const BOARD_LOADERS: Record<GameId, () => Promise<{ default: BoardComponent }>> = {
+  patches: () => import('./boards/patches-board'),
+  sudoku: () => import('./boards/sudoku-board'),
+  zip: () => import('./boards/zip-board'),
+  werd: () => import('./boards/werd-board'),
+  pinpoint: () => import('./boards/pinpoint-board'),
+  crossclimb: () => import('./boards/crossclimb-board'),
+  tango: () => import('./boards/tango-board'),
+  queens: () => import('./boards/queens-board'),
 };
+
+/** Boards whose chunk has loaded (module scope, so each stays one stable component). */
+const LOADED_BOARDS: Partial<Record<GameId, BoardComponent>> = {};
+
+/** Starts loading the game's board chunk on mount; re-renders once it is ready. */
+function useBoardChunk(game: GameId): void {
+  const [, setReady] = useState<GameId | null>(null);
+  const [failure, setFailure] = useState<unknown>(null);
+  useEffect(() => {
+    if (LOADED_BOARDS[game]) return;
+    let live = true;
+    BOARD_LOADERS[game]().then(
+      (m) => {
+        LOADED_BOARDS[game] = m.default;
+        if (live) setReady(game);
+      },
+      (err) => live && setFailure(err),
+    );
+    return () => {
+      live = false;
+    };
+  }, [game]);
+  // A chunk that fails to load goes to the error boundary, as it did with next/dynamic.
+  if (failure) throw failure;
+}
+
+/**
+ * Runs `fn` after the browser has painted the current update. Sounds and
+ * toasts wait for it: the first sound creates the page's AudioContext, which
+ * blocks the main thread (measured at up to 2 s on Windows) and would hold
+ * back the result panel.
+ */
+function afterPaint(fn: () => void) {
+  requestAnimationFrame(() => setTimeout(fn, 0));
+}
 
 type Post<T> = { data?: T; error?: Msg; status: number };
 
@@ -44,7 +84,7 @@ async function post<T>(url: string, body: unknown): Promise<Post<T>> {
   }
 }
 
-export function PlayClient({ game, mode, difficulty }: { game: GameId; mode: GameMode; difficulty: Difficulty }) {
+export function PlayClient({ game, mode, difficulty, hasSession }: { game: GameId; mode: GameMode; difficulty: Difficulty; hasSession: boolean }) {
   const meta = GAMES[game];
   const router = useRouter();
   const { push } = useToasts();
@@ -65,9 +105,11 @@ export function PlayClient({ game, mode, difficulty }: { game: GameId; mode: Gam
       if (!r.data) return setError(r.error ?? { key: 'play.startFailed' });
       setOffset(new Date(r.data.serverNow).getTime() - Date.now());
       setView(r.data);
-      if (r.data.status === 'active') router.refresh(); // header picks up a newly created guest
+      // The first game creates a guest account: re-render so the header shows it.
+      // Existing players skip this full server round trip (nothing in the header changed).
+      if (!hasSession && r.data.status === 'active') router.refresh();
     },
-    [game, mode, difficulty, router],
+    [game, mode, difficulty, hasSession, router],
   );
 
   // Guard against StrictMode's double effect run (would create two guests).
@@ -87,19 +129,21 @@ export function PlayClient({ game, mode, difficulty }: { game: GameId; mode: Gam
       setBusy(false);
       if (!r.data) {
         setMessage(r.error ?? { key: 'play.generic' });
-        play('error');
+        afterPaint(() => play('error'));
         if (r.status === 410) router.refresh();
         return null;
       }
       setView(r.data.view);
       if (r.data.message) {
         setMessage(r.data.message);
-        if (!r.data.solved) play('error');
+        if (!r.data.solved) afterPaint(() => play('error'));
       } else setMessage(null);
       if (r.data.completion && r.data.view.status === 'completed') {
         const c = r.data.completion;
-        play(c.perfect ? 'perfect' : 'complete');
-        push(c.events);
+        afterPaint(() => {
+          play(c.perfect ? 'perfect' : 'complete');
+          push(c.events);
+        });
         router.refresh();
       }
       return r.data;
@@ -107,7 +151,8 @@ export function PlayClient({ game, mode, difficulty }: { game: GameId; mode: Gam
     [view, play, push, router],
   );
 
-  const Board = BOARDS[game];
+  useBoardChunk(game);
+  const Board = LOADED_BOARDS[game];
   const done = view?.status === 'completed';
   const modeLabel = t(`mode.${mode}`);
 
@@ -138,6 +183,7 @@ export function PlayClient({ game, mode, difficulty }: { game: GameId; mode: Gam
                 role="radio"
                 aria-checked={d === difficulty}
                 href={`/play/${game}?mode=unlimited&difficulty=${d}`}
+                prefetch={false}
                 className={cn('rounded-lg px-3 py-1 text-sm font-medium', d === difficulty ? 'bg-accent text-accent-fg' : 'text-muted hover:text-fg')}
               >
                 {t(`difficulty.${d}`)}
@@ -174,9 +220,9 @@ export function PlayClient({ game, mode, difficulty }: { game: GameId; mode: Gam
         </Card>
       )}
 
-      {!error && !view && loading()}
+      {!error && (!view || !Board) && loading()}
 
-      {view && (
+      {view && Board && (
         <>
           <div className="relative">
             <Board key={view.id} sessionId={view.id} puzzle={view.puzzle} solved={done} busy={busy} act={act} />

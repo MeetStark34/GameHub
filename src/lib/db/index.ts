@@ -117,7 +117,9 @@ export function resilientQueryable(q: Queryable, target: string): Queryable {
 
 export async function createPostgresDb(url: string): Promise<Db> {
   const { default: postgres } = await import('postgres');
-  const sql = postgres(url, { ...postgresClientOptions, max: Number(process.env.DB_POOL_MAX ?? 5), idle_timeout: 20 });
+  // connect_timeout: an unreachable database fails the request after 10 s
+  // (logged with host/port below) instead of postgres.js's default 30 s spinner.
+  const sql = postgres(url, { ...postgresClientOptions, max: Number(process.env.DB_POOL_MAX ?? 5), idle_timeout: 20, connect_timeout: 10 });
   const wrap = wrapPostgres;
   return {
     ...resilientQueryable(wrap(sql), describeDbUrl(url)),

@@ -219,63 +219,78 @@ export interface StartInput {
   now: Date;
 }
 
+/**
+ * Opens a game. Each database round trip costs a full network latency on
+ * the deployed site, so independent reads are issued together and a new
+ * Unlimited puzzle is written in a single statement.
+ */
 export async function startSession(db: Db, input: StartInput): Promise<SessionView> {
   const { userId, game, mode, now } = input;
   if (mode === 'daily') {
     const date = toUtcDate(now);
-    const set = await ensureDailySet(db, date);
     const engine = ENGINES[game];
-    const puzzle = await one<{ data: unknown }>(db, 'select data from puzzles where id = $1', [set.puzzles[game]]);
+    const sessionSql = `${SESSION_SELECT} where s.user_id = $1 and s.daily_date = $2 and s.game = $3 and s.mode = 'daily'`;
+    // One round trip covers the common cases: resuming needs nothing more, and
+    // a first open of an existing Daily Set already has its puzzle. (On the
+    // day's first request the set is created first and the puzzle read after.)
+    const [set, existing, stored] = await Promise.all([
+      ensureDailySet(db, date),
+      maybeOne<SessionRow>(db, sessionSql, [userId, date, game]),
+      maybeOne<{ data: unknown }>(db, 'select p.data from daily_puzzles dp join puzzles p on p.id = dp.puzzle_id where dp.utc_date = $1 and dp.game = $2', [
+        date,
+        game,
+      ]),
+    ]);
+    if (existing) return toView(existing, now);
+    const puzzle = stored ?? (await one<{ data: unknown }>(db, 'select data from puzzles where id = $1', [set.puzzles[game]]));
     await db.query(
       `insert into game_sessions (user_id, puzzle_id, game, difficulty, mode, daily_date, state, started_at)
        values ($1, $2, $3, $4, 'daily', $5, $6::jsonb, $7::timestamptz)
        on conflict (user_id, daily_date, game) where mode = 'daily' do nothing`,
       [userId, set.puzzles[game], game, set.difficulty, date, JSON.stringify(engine.initialState(puzzle.data)), now.toISOString()],
     );
-    const row = await one<SessionRow>(db, `${SESSION_SELECT} where s.user_id = $1 and s.daily_date = $2 and s.game = $3 and s.mode = 'daily'`, [
-      userId,
-      date,
-      game,
-    ]);
+    // A separate statement, so a session inserted concurrently by another request is visible.
+    const row = await one<SessionRow>(db, sessionSql, [userId, date, game]);
     return toView(row, now);
   }
 
   const difficulty = input.difficulty ?? 'normal';
-  if (!input.fresh) {
-    const active = await maybeOne<SessionRow>(
-      db,
-      `${SESSION_SELECT} where s.user_id = $1 and s.game = $2 and s.difficulty = $3 and s.mode = 'unlimited'
-         and s.status = 'active' and s.started_at > $4::timestamptz order by s.started_at desc limit 1`,
-      [userId, game, difficulty, new Date(now.getTime() - 86_400_000).toISOString()],
-    );
-    if (active) return toView(active, now);
-  }
-  const recent = await one<{ n: number }>(
-    db,
-    `select count(*)::int as n from game_sessions where user_id = $1 and mode = 'unlimited' and started_at > $2::timestamptz`,
-    [userId, new Date(now.getTime() - 60_000).toISOString()],
-  );
+  // The in-progress check and the rate-limit count are independent reads.
+  const [active, recent] = await Promise.all([
+    input.fresh
+      ? null
+      : maybeOne<SessionRow>(
+          db,
+          `${SESSION_SELECT} where s.user_id = $1 and s.game = $2 and s.difficulty = $3 and s.mode = 'unlimited'
+             and s.status = 'active' and s.started_at > $4::timestamptz order by s.started_at desc limit 1`,
+          [userId, game, difficulty, new Date(now.getTime() - 86_400_000).toISOString()],
+        ),
+    one<{ n: number }>(db, `select count(*)::int as n from game_sessions where user_id = $1 and mode = 'unlimited' and started_at > $2::timestamptz`, [
+      userId,
+      new Date(now.getTime() - 60_000).toISOString(),
+    ]),
+  ]);
+  if (active) return toView(active, now);
   if (recent.n >= UNLIMITED_STARTS_PER_MINUTE) throw new PlayError('errors.startingTooFast', 429);
 
   const engine = ENGINES[game];
   const seed = `unlimited:${randomUUID()}`;
   const { puzzle, solution } = engine.generate(createRng(seed), difficulty, { mode: 'unlimited' });
-  const id = await db.tx(async (tx) => {
-    const p = await one<{ id: string }>(
-      tx,
-      `insert into puzzles (game, difficulty, mode, seed, generator_version, data, solution)
-       values ($1, $2, 'unlimited', $3, $4, $5::jsonb, $6::jsonb) returning id`,
-      [game, difficulty, seed, engine.generatorVersion, JSON.stringify(puzzle), JSON.stringify(solution)],
-    );
-    const s = await one<{ id: string }>(
-      tx,
-      `insert into game_sessions (user_id, puzzle_id, game, difficulty, mode, state, started_at)
-       values ($1, $2, $3, $4, 'unlimited', $5::jsonb, $6::timestamptz) returning id`,
-      [userId, p.id, game, difficulty, JSON.stringify(engine.initialState(puzzle)), now.toISOString()],
-    );
-    return s.id;
-  });
-  return getSession(db, userId, id, now);
+  const data = JSON.stringify(puzzle);
+  // Puzzle and session in one atomic statement: no transaction round trips.
+  const session = await one<Omit<SessionRow, 'data' | 'result'>>(
+    db,
+    `with p as (
+       insert into puzzles (game, difficulty, mode, seed, generator_version, data, solution)
+       values ($1, $2, 'unlimited', $3, $4, $5::jsonb, $6::jsonb) returning id
+     )
+     insert into game_sessions (user_id, puzzle_id, game, difficulty, mode, state, started_at)
+     select $7::uuid, p.id, $1, $2, 'unlimited', $8::jsonb, $9::timestamptz from p
+     returning *`,
+    [game, difficulty, seed, engine.generatorVersion, data, JSON.stringify(solution), userId, JSON.stringify(engine.initialState(puzzle)), now.toISOString()],
+  );
+  // The stored row plus the puzzle as stored (parsed from the JSON just written).
+  return toView({ ...session, data: JSON.parse(data), result: null }, now);
 }
 
 export type ActOutcome = ActResponse;
@@ -290,10 +305,16 @@ export const dailyDeadline = (date: UtcDate) => new Date(parseUtcDate(addDays(da
  */
 export async function actOnSession(db: Db, userId: string, sessionId: string, action: unknown, now: Date): Promise<ActOutcome> {
   return db.tx(async (tx) => {
-    const locked = await maybeOne<{ id: string }>(tx, 'select id from game_sessions where id = $1 and user_id = $2 for update', [sessionId, userId]);
-    if (!locked) throw new PlayError('errors.gameNotFound', 404);
-    const row = await one<SessionRow>(tx, `${SESSION_SELECT} where s.id = $1`, [sessionId]);
-    if (row.status === 'completed') return { view: toView(row, now), solved: true, completion: row.result };
+    // Lock the session row and read it with its puzzle in one round trip.
+    const row = await maybeOne<SessionRow>(tx, `${SESSION_SELECT} where s.id = $1 and s.user_id = $2 for update of s`, [sessionId, userId]);
+    if (!row) throw new PlayError('errors.gameNotFound', 404);
+    if (row.status === 'completed') {
+      // Replay the stored result, read by a new statement: if this request
+      // waited on the lock, the completion row was committed after the
+      // statement above took its snapshot, so the join there cannot see it.
+      const done = await one<SessionRow>(tx, `${SESSION_SELECT} where s.id = $1`, [sessionId]);
+      return { view: toView(done, now), solved: true, completion: done.result };
+    }
     if (row.mode === 'daily' && now > dailyDeadline(row.daily_date!))
       throw new PlayError('errors.dailyEnded', 410);
 
@@ -311,16 +332,23 @@ export async function actOnSession(db: Db, userId: string, sessionId: string, ac
       return { view: toView(row, now), solved: false, message: { key: 'errors.tooFast' }, completion: null };
     }
 
+    const state = JSON.stringify(result.state);
     await tx.query(
       `update game_sessions set state = $2::jsonb, action_count = action_count + 1, last_action_at = $3::timestamptz where id = $1`,
-      [sessionId, JSON.stringify(result.state), now.toISOString()],
+      [sessionId, state, now.toISOString()],
     );
     let completion: CompletionResult | null = null;
     if (result.solved) {
       completion = await processCompletion(tx, { ...row, state: result.state }, durationMs, now);
       await tx.query(`update game_sessions set status = 'completed', completed_at = $2::timestamptz where id = $1`, [sessionId, now.toISOString()]);
     }
-    const fresh = await one<SessionRow>(tx, `${SESSION_SELECT} where s.id = $1`, [sessionId]);
+    // The row as just written (JSON values parsed back, as a read would return
+    // them), instead of a further round trip to read it.
+    const fresh: SessionRow = {
+      ...row,
+      state: JSON.parse(state),
+      ...(completion && { status: 'completed' as const, completed_at: now, result: JSON.parse(JSON.stringify(completion)) as CompletionResult }),
+    };
     return { view: toView(fresh, now), solved: result.solved, message: result.message, feedback: result.feedback, completion };
   });
 }
@@ -344,22 +372,28 @@ async function processCompletion(tx: Queryable, s: SessionRow, durationMs: numbe
   const hour = now.getUTCHours();
 
   const before = await ensureStats(tx, userId);
-  const masteryBefore = await maybeOne<{ xp: number }>(tx, 'select xp from mastery where user_id = $1 and game = $2', [userId, game]);
+  // ensureStats locked the stats row, so the freeze flag cannot change before
+  // commit: the reward helpers below reuse it instead of re-reading it.
+  const frozen = before.xp_frozen;
 
-  // Volume activity for the UTC day the game was actually finished.
-  const activity = await one<{ games_completed: number; unlimited_completed: number; volume_punch_awarded: boolean }>(
-    tx,
-    `insert into daily_activity (user_id, utc_date, games_completed, unlimited_completed, hours_mask, per_game)
-     values ($1, $2, 1, $3, $4, jsonb_build_object($5::text, 1))
-     on conflict (user_id, utc_date) do update set
-       games_completed = daily_activity.games_completed + 1,
-       unlimited_completed = daily_activity.unlimited_completed + excluded.unlimited_completed,
-       hours_mask = daily_activity.hours_mask | excluded.hours_mask,
-       per_game = jsonb_set(daily_activity.per_game, array[$5::text],
-         to_jsonb(coalesce((daily_activity.per_game ->> $5::text)::int, 0) + 1))
-     returning games_completed, unlimited_completed, volume_punch_awarded`,
-    [userId, today, mode === 'unlimited' ? 1 : 0, 1 << hour, game],
-  );
+  // Pipelined (one round trip, executed in this order).
+  const [masteryBefore, activity] = await Promise.all([
+    maybeOne<{ xp: number }>(tx, 'select xp from mastery where user_id = $1 and game = $2', [userId, game]),
+    // Volume activity for the UTC day the game was actually finished.
+    one<{ games_completed: number; unlimited_completed: number; volume_punch_awarded: boolean }>(
+      tx,
+      `insert into daily_activity (user_id, utc_date, games_completed, unlimited_completed, hours_mask, per_game)
+       values ($1, $2, 1, $3, $4, jsonb_build_object($5::text, 1))
+       on conflict (user_id, utc_date) do update set
+         games_completed = daily_activity.games_completed + 1,
+         unlimited_completed = daily_activity.unlimited_completed + excluded.unlimited_completed,
+         hours_mask = daily_activity.hours_mask | excluded.hours_mask,
+         per_game = jsonb_set(daily_activity.per_game, array[$5::text],
+           to_jsonb(coalesce((daily_activity.per_game ->> $5::text)::int, 0) + 1))
+       returning games_completed, unlimited_completed, volume_punch_awarded`,
+      [userId, today, mode === 'unlimited' ? 1 : 0, 1 << hour, game],
+    ),
+  ]);
 
   const xp = completionXp({
     game,
@@ -370,7 +404,7 @@ async function processCompletion(tx: Queryable, s: SessionRow, durationMs: numbe
     unlimitedEarlierToday: mode === 'unlimited' ? activity.unlimited_completed - 1 : 0,
   });
   const breakdown = [...xp.breakdown];
-  await awardXp(tx, userId, xp.xp, `complete-${mode}`, `completion:${s.id}`);
+  await awardXp(tx, userId, xp.xp, `complete-${mode}`, `completion:${s.id}`, { frozen });
 
   const mastery = await one<{ xp: number }>(
     tx,
@@ -412,14 +446,14 @@ async function processCompletion(tx: Queryable, s: SessionRow, durationMs: numbe
     daily = { date, completed: progress.daily_completed, total: GAME_IDS.length, setComplete };
 
     if (progress.daily_completed === 1) {
-      if (await awardXp(tx, userId, XP_ECONOMY.firstDailyGameBonus, 'first-daily', `daily-first:${date}`))
+      if (await awardXp(tx, userId, XP_ECONOMY.firstDailyGameBonus, 'first-daily', `daily-first:${date}`, { frozen }))
         breakdown.push({ label: 'First Daily game today', amount: XP_ECONOMY.firstDailyGameBonus });
-      normal = await advanceStreak(tx, userId, 'normal', date, events);
+      normal = await advanceStreak(tx, userId, 'normal', date, events, frozen);
     }
     if (setComplete) {
-      if (await awardXp(tx, userId, XP_ECONOMY.dailySetCompleteBonus, 'daily-set', `daily-set:${date}`))
+      if (await awardXp(tx, userId, XP_ECONOMY.dailySetCompleteBonus, 'daily-set', `daily-set:${date}`, { frozen }))
         breakdown.push({ label: 'Daily Set complete', amount: XP_ECONOMY.dailySetCompleteBonus });
-      truePlayer = await advanceStreak(tx, userId, 'true_player', date, events);
+      truePlayer = await advanceStreak(tx, userId, 'true_player', date, events, frozen);
       const tp = await one<{ true_player_days: number }>(
         tx,
         'update user_stats set true_player_days = true_player_days + 1 where user_id = $1 returning true_player_days',
@@ -433,16 +467,16 @@ async function processCompletion(tx: Queryable, s: SessionRow, durationMs: numbe
         xp: XP_ECONOMY.dailySetCompleteBonus,
       };
       events.push(e);
-      await notify(tx, userId, e);
+      await notify(tx, userId, e, frozen);
       if (tp.true_player_days % REPAIR_CARDS.dailySetsPerPunch === 0)
-        await grantPunch(tx, userId, 'daily-sets', `punch:daily-sets:${tp.true_player_days}`, events);
+        await grantPunch(tx, userId, 'daily-sets', `punch:daily-sets:${tp.true_player_days}`, events, frozen);
       dailySetEvent = { hourUtc: hour, order: progress.daily_order };
     }
   }
 
   if (activity.games_completed >= REPAIR_CARDS.dailyVolumeGames && !activity.volume_punch_awarded) {
     await tx.query('update daily_activity set volume_punch_awarded = true where user_id = $1 and utc_date = $2', [userId, today]);
-    await grantPunch(tx, userId, 'volume', `punch:volume:${today}`, events);
+    await grantPunch(tx, userId, 'volume', `punch:volume:${today}`, events, frozen);
   }
 
   const achievements = await evaluateAchievements(
@@ -460,9 +494,16 @@ async function processCompletion(tx: Queryable, s: SessionRow, durationMs: numbe
       dailySet: dailySetEvent,
     },
     events,
+    frozen,
   );
 
-  const after = await one<{ total_xp: number }>(tx, 'select total_xp from user_stats where user_id = $1', [userId]);
+  // Final reads in one round trip. The streak rows are read here, before the
+  // notifications below, which do not change them.
+  const [after, normalNow, truePlayerNow] = await Promise.all([
+    one<{ total_xp: number }>(tx, 'select total_xp from user_stats where user_id = $1', [userId]),
+    mode === 'daily' && !normal.advanced ? maybeOne<{ current: number }>(tx, `select current from streaks where user_id = $1 and kind = 'normal'`, [userId]) : null,
+    !truePlayer.advanced ? maybeOne<{ current: number }>(tx, `select current from streaks where user_id = $1 and kind = 'true_player'`, [userId]) : null,
+  ]);
   const rankBefore = rankFromXp(before.total_xp, PLAYER_RANKS);
   const rankAfter = rankFromXp(after.total_xp, PLAYER_RANKS);
   if (rankAfter.level > rankBefore.level) {
@@ -474,7 +515,7 @@ async function processCompletion(tx: Queryable, s: SessionRow, durationMs: numbe
       data: { level: rankAfter.level },
     };
     events.unshift(e);
-    await notify(tx, userId, e);
+    await notify(tx, userId, e, frozen);
   }
   const mBefore = rankFromXp(masteryBefore?.xp ?? 0, MASTERY_RANKS);
   const mAfter = rankFromXp(mastery.xp, MASTERY_RANKS);
@@ -486,17 +527,11 @@ async function processCompletion(tx: Queryable, s: SessionRow, durationMs: numbe
       i18n: { title: { key: 'events.masteryUp.title', params: { game: meta.name, rank: mAfter.name } }, body: { key: 'events.masteryUp.body', params: { game: meta.name } } },
     };
     events.push(e);
-    await notify(tx, userId, e);
+    await notify(tx, userId, e, frozen);
   }
 
-  if (mode === 'daily' && !normal.advanced) {
-    const n = await maybeOne<{ current: number }>(tx, `select current from streaks where user_id = $1 and kind = 'normal'`, [userId]);
-    normal = { current: n?.current ?? 0, advanced: false };
-  }
-  if (!truePlayer.advanced) {
-    const t = await maybeOne<{ current: number }>(tx, `select current from streaks where user_id = $1 and kind = 'true_player'`, [userId]);
-    truePlayer = { current: t?.current ?? 0, advanced: false };
-  }
+  if (mode === 'daily' && !normal.advanced) normal = { current: normalNow?.current ?? 0, advanced: false };
+  if (!truePlayer.advanced) truePlayer = { current: truePlayerNow?.current ?? 0, advanced: false };
 
   const result: CompletionResult = {
     sessionId: s.id,

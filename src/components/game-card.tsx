@@ -7,6 +7,7 @@ import { formatDuration } from '@/lib/time';
 import type { GameId } from '@/games/types';
 import { useI18n } from '@/i18n/client';
 import { GameGlyph } from './brand';
+import { LinkPending } from './layout/link-pending';
 import { cn } from './ui';
 
 export function GameTile({ game, className }: { game: GameId; className?: string }) {
@@ -27,8 +28,10 @@ export function DailyGameCard({ game, status, score, durationMs }: { game: GameI
   return (
     <Link
       href={`/play/${game}?mode=daily`}
-      className={cn('group flex min-w-0 items-center gap-3 rounded-2xl border bg-card p-3 transition hover:-translate-y-0.5 hover:shadow-md', done ? 'border-success/40' : 'border-border')}
+      prefetch={false}
+      className={cn('group relative flex min-w-0 items-center gap-3 rounded-2xl border bg-card p-3 transition hover:-translate-y-0.5 hover:shadow-md', done ? 'border-success/40' : 'border-border')}
     >
+      <LinkPending className="inset-x-4 bottom-1" />
       <GameTile game={game} />
       <span className="min-w-0 flex-1">
         <span className="block font-semibold">{meta.name}</span>
