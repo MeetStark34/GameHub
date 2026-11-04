@@ -1,5 +1,5 @@
 import type { Msg } from '@/i18n/translate';
-import { msg } from '../shared';
+import { msg } from '../core';
 import type { PatchClue, PatchRect, PatchShape, PatchesPuzzle } from './types';
 
 export const shapeOf = (rect: Pick<PatchRect, 'h' | 'w'>): Exclude<PatchShape, 'any'> =>

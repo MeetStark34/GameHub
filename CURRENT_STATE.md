@@ -1,5 +1,27 @@
 # Current state
 
+## Faster navigation and game opening (2026-11-04, D-038 to D-040)
+Local production build, 80 ms of added network latency (before -> after):
+
+| | before | after |
+|---|---|---|
+| Header link click (Dashboard, Daily, ...) | 110-128 ms | 15-33 ms |
+| Landing -> Daily | 130-150 ms | 30-35 ms |
+| Open a Daily game | ~372 ms | 120-154 ms |
+| Open an Unlimited game / change difficulty | ~233 ms | ~97-115 ms |
+| First load (FCP, median) | 340 ms | 352 ms (same; 3 font files instead of 5) |
+
+- Header and bottom nav links prefetch fully; the router.refresh() after any
+  mutation drops that cache (checked: Daily and Dashboard show a finished
+  game right after it). Sign-in, sign-out and account deletion do a full load.
+- Play links: hover prefetches the page and its board, a click starts the
+  session in parallel with the navigation (PlayIntent).
+- zod (30 KB gzipped) no longer ships to game pages; Daily, Dashboard,
+  /api/me/summary and sign-in no longer load the game engines and word lists
+  on a cold start.
+- Sounds no longer block the main thread (offline-rendered WAV via <audio>).
+- Gates: lint, typecheck, 219 unit/integration, 19 E2E, build: all passing.
+
 ## Hung pages fixed (2026-11-04, D-037)
 On the live site, signed-in pages with many parallel reads (Dashboard, Daily,
 `/api/me/summary`, reliably right after a Daily game) never finished:

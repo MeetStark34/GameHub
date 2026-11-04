@@ -29,7 +29,7 @@ export async function Header({ user }: { user: HeaderUser | null }) {
   return (
     <header className="sticky top-0 z-40 border-b border-border bg-bg/85 backdrop-blur supports-[backdrop-filter]:bg-bg/70">
       <div className="mx-auto flex h-14 max-w-7xl items-center gap-2 px-3 sm:gap-3 sm:px-6">
-        <Link href={user ? '/dashboard' : '/'} className="shrink-0 rounded-lg" aria-label={t('nav.homeLink')}>
+        <Link href={user ? '/dashboard' : '/'} prefetch className="shrink-0 rounded-lg" aria-label={t('nav.homeLink')}>
           <Wordmark compact />
         </Link>
         <nav aria-label={t('nav.main')} className="hidden flex-1 xl:block">

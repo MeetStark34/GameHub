@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState, type ComponentType } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronDown, Info, RefreshCw } from 'lucide-react';
 import { GAMES } from '@/config/games';
 import type { ActResponse, SessionView } from '@/lib/contracts';
@@ -10,31 +10,15 @@ import { formatDuration } from '@/lib/time';
 import { DIFFICULTIES, type Difficulty, type GameId, type GameMode } from '@/games/types';
 import { useI18n } from '@/i18n/client';
 import type { Msg } from '@/i18n/translate';
+import { playTarget } from '@/lib/play-url';
 import { GameGlyph } from '@/components/brand';
 import { useToasts, usePrefs } from '@/components/providers';
 import { Button, ButtonLink, Card, cn } from '@/components/ui';
-import type { BoardProps } from './board-kit';
+import { BOARD_LOADERS, type BoardComponent } from './boards';
 import { ResultPanel } from './result-panel';
+import { post, requestStart, takeEarlyStart } from './start-session';
 
 const loading = () => <div className="mx-auto aspect-square w-full max-w-md animate-pulse rounded-2xl bg-subtle" />;
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type BoardComponent = ComponentType<BoardProps<any>>;
-/**
- * Code-split: each game's board only loads when that game is played. The
- * chunk is fetched in parallel with the session (see useBoardChunk) rather than
- * through next/dynamic, whose Suspense fallback made React hold the board
- * back for its ~300 ms reveal throttle even when everything had arrived.
- */
-const BOARD_LOADERS: Record<GameId, () => Promise<{ default: BoardComponent }>> = {
-  patches: () => import('./boards/patches-board'),
-  sudoku: () => import('./boards/sudoku-board'),
-  zip: () => import('./boards/zip-board'),
-  werd: () => import('./boards/werd-board'),
-  pinpoint: () => import('./boards/pinpoint-board'),
-  crossclimb: () => import('./boards/crossclimb-board'),
-  tango: () => import('./boards/tango-board'),
-  queens: () => import('./boards/queens-board'),
-};
 
 /** Boards whose chunk has loaded (module scope, so each stays one stable component). */
 const LOADED_BOARDS: Partial<Record<GameId, BoardComponent>> = {};
@@ -62,26 +46,12 @@ function useBoardChunk(game: GameId): void {
 }
 
 /**
- * Runs `fn` after the browser has painted the current update. Sounds and
- * toasts wait for it: the first sound creates the page's AudioContext, which
- * blocks the main thread (measured at up to 2 s on Windows) and would hold
- * back the result panel.
+ * Runs `fn` after the browser has painted the current update, so the result
+ * panel never waits on sounds or reward toasts. (Sounds no longer block the
+ * main thread at all, see src/lib/sound.ts, but toasts still cost a render.)
  */
 function afterPaint(fn: () => void) {
   requestAnimationFrame(() => setTimeout(fn, 0));
-}
-
-type Post<T> = { data?: T; error?: Msg; status: number };
-
-async function post<T>(url: string, body: unknown): Promise<Post<T>> {
-  try {
-    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) return { error: { key: json.code ?? 'play.generic' }, status: res.status };
-    return { data: json as T, status: res.status };
-  } catch {
-    return { error: { key: 'play.offline' }, status: 0 };
-  }
 }
 
 export function PlayClient({ game, mode, difficulty, hasSession }: { game: GameId; mode: GameMode; difficulty: Difficulty; hasSession: boolean }) {
@@ -101,9 +71,11 @@ export function PlayClient({ game, mode, difficulty, hasSession }: { game: GameI
     async (fresh = false) => {
       setError(null);
       setView(null);
-      const r = await post<SessionView>('/api/play/start', { game, mode, difficulty, fresh });
+      const target = playTarget(game, mode, difficulty)!;
+      // A click on the play link usually started this already (see PlayIntent).
+      const r = await ((!fresh && takeEarlyStart(target)) || requestStart(target, fresh));
       if (!r.data) return setError(r.error ?? { key: 'play.startFailed' });
-      setOffset(new Date(r.data.serverNow).getTime() - Date.now());
+      setOffset(new Date(r.data.serverNow).getTime() - r.receivedAt);
       setView(r.data);
       // The first game creates a guest account: re-render so the header shows it.
       // Existing players skip this full server round trip (nothing in the header changed).

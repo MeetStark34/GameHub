@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import { ChevronDown, LogOut, Settings, Shield, Trophy, User } from 'lucide-react';
 import { useI18n } from '@/i18n/client';
@@ -10,7 +9,6 @@ import type { HeaderUser } from './header';
 export function UserMenu({ user }: { user: HeaderUser }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
-  const router = useRouter();
   const { t } = useI18n();
 
   useEffect(() => {
@@ -27,8 +25,9 @@ export function UserMenu({ user }: { user: HeaderUser }) {
 
   async function signOut() {
     await fetch('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
-    router.push('/');
-    router.refresh();
+    // Full load: drops every page prefetched for the signed-in account.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load on purpose (see above)
+    window.location.assign('/');
   }
 
   const item = 'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm hover:bg-subtle';

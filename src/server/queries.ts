@@ -8,7 +8,7 @@ import { rankFromXp, type RankInfo } from '@/lib/progression/ranks';
 import { viewStreak, type StreakView } from '@/lib/progression/streaks';
 import { addDays, nextUtcMidnight, toUtcDate, utcWeekStart } from '@/lib/time';
 import { GAME_IDS, type Difficulty, type GameId, type GameMode } from '@/games/types';
-import { dailyDifficultyFor } from './play';
+import { dailyDifficultyFor } from '@/config/games';
 import { loadAchievementStats, loadStreaks, type StatsRow } from './progress';
 
 export interface MasteryEntry {

@@ -274,3 +274,53 @@ in the first round with the default, 50 rounds clean with `max_pipeline: 1`);
 pipeline on their own connection: the pooler keeps one server connection for
 the whole transaction (verified the same way). The default pool is now 10
 connections (`DB_POOL_MAX`), so a request's parallel reads still run at once.
+
+## D-038 Header links are fully prefetched; sign-in and sign-out reload (2026-11-04)
+Every page is dynamic (the root layout reads cookies), and without
+`loading.js` Next.js's default prefetch fetched nothing usable, so each click
+on a header link waited a full server round trip (110-130 ms locally with 80
+ms of added latency, 120-350 ms on the live site). The main navigation (header
+and bottom nav links, the logo, the result panel's Daily/Dashboard buttons and
+the landing page's two calls to action) now uses `prefetch` (full): those
+clicks render from the client cache in 15-35 ms. This is safe because
+`router.refresh()` drops the whole client cache (Next 16 bumps the segment
+cache version and re-prefetches visible links), and every mutation already
+calls it: finishing a game, a guest's first start, settings, language,
+notifications, streak repair, the midnight reset ticker. Prefetched entries
+otherwise live for `staleTimes.static` (5 min). Signing in, signing out and
+deleting the account use a full page load instead of `router.push` +
+`refresh`, which would first show pages prefetched for the previous identity
+(and keep the previous theme and sound settings). Footer links no longer
+prefetch: on dynamic routes that only cost a server render the browser
+aborted.
+
+## D-039 Opening a game: one round trip, started on click (2026-11-04)
+Play links do not prefetch on render (a /daily view would render eight game
+pages). `PlayIntent` (root layout) listens on the document instead: hover,
+touch or focus on any `/play/...` link prefetches that page and its board
+chunk; a plain left click (not a new-tab click) also sends
+`POST /api/play/start` at once, in parallel with the navigation, and
+`PlayClient` picks the response up (`takeEarlyStart`, 15 s TTL, each used
+once). Starting on click rather than on hover matters: creating a Daily
+session starts its timer. Early starts run one after another, so a first-time
+visitor's second click carries the guest cookie from the first. The page and
+the early start parse a URL with the same `playTarget`. Opening a Daily game
+went from ~372 ms to 120-150 ms, an Unlimited one from ~233 ms to ~97 ms
+(local build, 80 ms added latency).
+
+## D-040 Lighter modules on hot paths (2026-11-04)
+- Boards import game logic in the browser; the logic now imports `games/core`
+  (msg, Cell, ORTHO, inBounds) instead of `games/shared`, which needs zod:
+  30 KB gzipped of zod left the game pages.
+- `dailyDifficultyFor` lives in `config/games`, `PlayError` in
+  `server/errors`, `audit` in `server/audit` (each re-exported from its old
+  module). The Daily and Dashboard pages, `/api/me/summary`, sign-in and
+  sign-up no longer load the game engines and word lists on a cold start
+  (Daily 1009 KB -> 613 KB of server code, sign-in 790 KB -> 348 KB).
+- Fonts preload only their Latin files (5 -> 3 files on a first visit);
+  `subsets` only controls preloading, so Cyrillic glyphs still load on demand.
+- Sounds are rendered once with an OfflineAudioContext into WAV blobs and
+  played through `<audio>`: creating a realtime AudioContext blocked the main
+  thread 67 ms (Chrome) to 174 ms (Edge) on Windows, right as a result or
+  reward appeared; the new path blocks it for 0 ms (the first sound may start
+  up to ~0.3 s later).

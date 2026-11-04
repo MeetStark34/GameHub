@@ -1,7 +1,7 @@
 import 'server-only';
 import { DEVELOPER } from '@/config/site';
 import type { Db } from '@/lib/db';
-import { audit } from './admin';
+import { audit } from './audit';
 import { applyDeveloperShowcase } from './developer';
 
 export const bootstrapAdminEmails = () =>

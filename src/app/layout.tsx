@@ -11,6 +11,7 @@ import { Providers } from '@/components/providers';
 import { Header, type HeaderUser } from '@/components/layout/header';
 import { BottomNav } from '@/components/layout/bottom-nav';
 import { Footer } from '@/components/layout/footer';
+import { PlayIntent } from '@/components/play/play-intent';
 import { requestPreferences } from '@/server/account';
 import { currentUser, isAdmin } from '@/server/auth';
 import { siteUrl } from '@/server/request';
@@ -21,9 +22,12 @@ import { loadStreaks } from '@/server/progress';
 import { PLAYER_RANKS } from '@/config/ranks';
 import './globals.css';
 
-const body = Inter({ subsets: ['latin', 'cyrillic'], variable: '--font-body', display: 'swap' });
+// `subsets` only picks which files are preloaded: every @font-face (Cyrillic
+// included) is still declared, so Russian text loads its glyphs on demand
+// instead of every first visit downloading them.
+const body = Inter({ subsets: ['latin'], variable: '--font-body', display: 'swap' });
 const display = Space_Grotesk({ subsets: ['latin'], variable: '--font-display', display: 'swap', weight: ['500', '600', '700'] });
-const mono = JetBrains_Mono({ subsets: ['latin', 'cyrillic'], variable: '--font-mono', display: 'swap', weight: ['500', '700'] });
+const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap', weight: ['500', '700'] });
 
 export async function generateMetadata(): Promise<Metadata> {
   const tr = await getTranslator();
@@ -110,6 +114,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </main>
             <Footer />
             <BottomNav signedIn={!!user} />
+            <PlayIntent />
           </Providers>
         </I18nProvider>
       </body>

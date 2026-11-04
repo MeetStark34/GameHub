@@ -1,6 +1,6 @@
 import 'server-only';
 import { createHash, randomUUID } from 'node:crypto';
-import { DAILY_DIFFICULTY_BY_WEEKDAY, GAMES } from '@/config/games';
+import { dailyDifficultyFor, GAMES } from '@/config/games';
 import { DAILY_GRACE_MINUTES } from '@/config/economy';
 import { MASTERY_RANKS, PLAYER_RANKS } from '@/config/ranks';
 import { maybeOne, one, type Db, type Queryable } from '@/lib/db';
@@ -25,19 +25,14 @@ import type { ActResponse, CompletionResult, RewardEvent, SessionView } from '@/
 export type { CompletionResult, SessionView } from '@/lib/contracts';
 import { REPAIR_CARDS, XP_ECONOMY } from '@/config/economy';
 
-export class PlayError extends Error {
-  constructor(
-    message: string,
-    public status = 400,
-  ) {
-    super(message);
-  }
-}
+import { PlayError } from './errors';
+export { PlayError };
 
 /** Unlimited sessions a player may start per minute (anti-scripting). */
 const UNLIMITED_STARTS_PER_MINUTE = 30;
 
-export const dailyDifficultyFor = (date: UtcDate): Difficulty => DAILY_DIFFICULTY_BY_WEEKDAY[parseUtcDate(date).getUTCDay()];
+// Lives in config (pages import it without loading the game engines); re-exported for existing callers.
+export { dailyDifficultyFor };
 
 export const dailySeed = (date: UtcDate, game: GameId, attempt = 0) => `daily:${date}:${game}${attempt ? `:${attempt}` : ''}`;
 

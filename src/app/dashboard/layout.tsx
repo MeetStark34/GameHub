@@ -2,7 +2,7 @@ import { getDb, maybeOne } from '@/lib/db';
 import { toUtcDate } from '@/lib/time';
 import { ResetTicker } from '@/components/layout/reset-ticker';
 import { currentUser } from '@/server/auth';
-import { dailyDifficultyFor } from '@/server/play';
+import { dailyDifficultyFor } from '@/config/games';
 
 /**
  * The news-style reset ticker belongs to the Dashboard only. Rendering it

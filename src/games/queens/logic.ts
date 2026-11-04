@@ -1,5 +1,5 @@
 import type { Msg } from '@/i18n/translate';
-import { msg, type Cell } from '../shared';
+import { msg, type Cell } from '../core';
 import type { QueensPuzzle, QueensSolution } from './types';
 
 /**

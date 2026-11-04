@@ -2,7 +2,7 @@ import 'server-only';
 import { NextResponse } from 'next/server';
 import { ZodError } from 'zod';
 import { englishOf } from '@/i18n/translate';
-import { PlayError } from './play';
+import { PlayError } from './errors';
 import { AuthError } from './users';
 
 export class HttpError extends Error {

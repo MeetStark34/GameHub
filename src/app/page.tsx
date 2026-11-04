@@ -21,10 +21,10 @@ export default async function Landing() {
           </h1>
           <p className="mt-5 max-w-xl text-lg text-muted">{t('landing.lead')}</p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonLink href="/daily" size="lg">
+            <ButtonLink href="/daily" prefetch size="lg">
               {t('landing.playDaily')} <ArrowRight className="size-5" aria-hidden />
             </ButtonLink>
-            <ButtonLink href="/unlimited" size="lg" variant="secondary">
+            <ButtonLink href="/unlimited" prefetch size="lg" variant="secondary">
               <InfinityIcon className="size-5" aria-hidden /> {t('landing.tryUnlimited')}
             </ButtonLink>
           </div>

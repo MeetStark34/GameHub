@@ -1,11 +1,12 @@
 import { z } from 'zod';
 import type { Msg } from '@/i18n/translate';
+import { msg } from './core';
 import type { ActResult, SubmitState } from './types';
 
-/** A translatable game message (key under gameMsg.* in src/i18n/messages). */
-export const msg = (key: string, params?: Msg['params']): Msg => ({ key: `gameMsg.${key}`, params });
+// Engine-side helpers (server only in practice: they need zod). Game logic
+// that boards import uses ./core, which these re-export for the engines.
+export { msg, inBounds, ORTHO, type Cell } from './core';
 
-export type Cell = [row: number, col: number];
 export const cellSchema = z.tuple([z.number().int().min(0).max(63), z.number().int().min(0).max(63)]);
 
 export const initialSubmitState = (): SubmitState => ({ wrongSubmits: 0 });
@@ -35,13 +36,3 @@ export function submitAct<P, Sub>(
 
 export const submitPenalty = (state: SubmitState, perMistake = 0.1, max = 0.5) =>
   Math.min(max, state.wrongSubmits * perMistake);
-
-export const inBounds = (r: number, c: number, rows: number, cols = rows) =>
-  r >= 0 && c >= 0 && r < rows && c < cols;
-
-export const ORTHO: readonly Cell[] = [
-  [-1, 0],
-  [1, 0],
-  [0, -1],
-  [0, 1],
-];

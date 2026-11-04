@@ -1,5 +1,5 @@
 import type { Msg } from '@/i18n/translate';
-import { msg } from '../shared';
+import { msg } from '../core';
 import type { ZipPuzzle } from './types';
 
 export const wallKey = (a: [number, number], b: [number, number]) => {

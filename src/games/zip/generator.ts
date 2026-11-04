@@ -1,5 +1,5 @@
 import type { Rng } from '@/lib/rng';
-import { ORTHO, inBounds } from '../shared';
+import { ORTHO, inBounds } from '../core';
 import type { ZipDifficulty } from './config';
 import { wallKey } from './logic';
 import type { ZipPuzzle, ZipSolution, ZipWall, ZipWaypoint } from './types';

@@ -15,6 +15,7 @@ import { awardXp, ensureStats, evaluateAchievements, loadStreak, notify, saveStr
 import { winningActionsFor } from './solutions';
 import { applyDeveloperShowcase } from './developer';
 import { purgeUser } from './account';
+import { audit } from './audit';
 
 /** Largest single manual XP or streak change; keeps typos (an extra zero or three) from doing real damage. */
 export const ADMIN_LIMITS = { xpPerAdjustment: 1_000_000, streakPerAdjustment: 3_650, maxTotalXp: 2_000_000_000 } as const;
@@ -22,14 +23,7 @@ export const ADMIN_LIMITS = { xpPerAdjustment: 1_000_000, streakPerAdjustment: 3
 export const BADGES = ['developer', 'moderator', 'tester', 'founder', 'contributor'] as const;
 export const ROLES = ['admin', 'moderator'] as const;
 
-export async function audit(db: Queryable, actorId: string, action: string, targetUserId: string | null, details: unknown) {
-  await db.query('insert into admin_audit_log (actor_id, action, target_user_id, details) values ($1, $2, $3, $4::jsonb)', [
-    actorId,
-    action,
-    targetUserId,
-    JSON.stringify(details ?? {}),
-  ]);
-}
+export { audit };
 
 const uuid = z.string().uuid();
 const kind = z.enum(['normal', 'true_player']);

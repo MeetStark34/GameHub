@@ -4,7 +4,7 @@ import { DEVELOPER } from '@/config/site';
 import { maybeOne, one, type Db } from '@/lib/db';
 import { toUtcDate } from '@/lib/time';
 import { GAME_IDS } from '@/games/types';
-import { PlayError } from './play';
+import { PlayError } from './errors';
 import { awardXp, ensureStats, saveStreak } from './progress';
 
 /**

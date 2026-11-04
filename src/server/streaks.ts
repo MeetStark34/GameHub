@@ -2,7 +2,7 @@ import 'server-only';
 import { maybeOne, type Db } from '@/lib/db';
 import { repairStreak, viewStreak } from '@/lib/progression/streaks';
 import { toUtcDate } from '@/lib/time';
-import { PlayError } from './play';
+import { PlayError } from './errors';
 import { ensureStats, evaluateAchievements, loadStreak, notify, saveStreak, type RewardEvent, type StreakKind } from './progress';
 
 /**

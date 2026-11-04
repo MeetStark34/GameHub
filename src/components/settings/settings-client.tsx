@@ -139,7 +139,6 @@ export function ProfileForm({ displayName, title, profilePublic, showOnLeaderboa
 }
 
 export function DataControls({ handle, isGuest }: { handle: string; isGuest: boolean }) {
-  const router = useRouter();
   const { t, msg } = useI18n();
   const [open, setOpen] = useState(false);
   const [confirm, setConfirm] = useState('');
@@ -153,8 +152,9 @@ export function DataControls({ handle, isGuest }: { handle: string; isGuest: boo
     const json = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok) return setError(json.code ? msg(json.code) : t('settings.deleteFailed'));
-    router.push('/');
-    router.refresh();
+    // Full load: drops every page prefetched for the deleted account.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load on purpose (see above)
+    window.location.assign('/');
   }
   return (
     <div className="space-y-3">

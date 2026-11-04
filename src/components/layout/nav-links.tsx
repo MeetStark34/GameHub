@@ -25,6 +25,7 @@ export function NavLinks() {
           <li key={n.href}>
             <Link
               href={n.href}
+              prefetch
               aria-current={active ? 'page' : undefined}
               className={cn('relative whitespace-nowrap rounded-lg px-2.5 py-1.5 text-sm font-medium transition', active ? 'bg-subtle text-fg' : 'text-muted hover:text-fg')}
             >

@@ -1,5 +1,5 @@
 import type { Msg } from '@/i18n/translate';
-import { msg } from '../shared';
+import { msg } from '../core';
 import type { SudokuPuzzle } from './types';
 
 const boxOf = (p: Pick<SudokuPuzzle, 'size' | 'boxRows' | 'boxCols'>, r: number, c: number) =>

@@ -1,4 +1,5 @@
 import type { Difficulty, GameId } from '@/games/types';
+import { parseUtcDate, type UtcDate } from '@/lib/time';
 
 /**
  * Client-safe game metadata used by scoring and anti-cheat. All times are
@@ -93,3 +94,5 @@ export const DAILY_DIFFICULTY_BY_WEEKDAY: Record<number, Difficulty> = {
   5: 'hard',
   6: 'hard',
 };
+
+export const dailyDifficultyFor = (date: UtcDate): Difficulty => DAILY_DIFFICULTY_BY_WEEKDAY[parseUtcDate(date).getUTCDay()];

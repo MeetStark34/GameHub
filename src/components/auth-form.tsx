@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { useI18n } from '@/i18n/client';
 import { Button, Card } from '@/components/ui';
@@ -11,7 +10,6 @@ type Mode = 'login' | 'signup' | 'forgot' | 'reset';
 const ENDPOINT: Record<Mode, string> = { login: '/api/auth/login', signup: '/api/auth/signup', forgot: '/api/auth/forgot', reset: '/api/auth/reset' };
 
 export function AuthForm({ mode, token, isGuest }: { mode: Mode; token?: string; isGuest?: boolean }) {
-  const router = useRouter();
   const { t, msg } = useI18n();
   const [values, setValues] = useState({ email: '', password: '', handle: '', displayName: '' });
   const [error, setError] = useState<string | null>(null);
@@ -29,8 +27,11 @@ export function AuthForm({ mode, token, isGuest }: { mode: Mode; token?: string;
     if (!res.ok) return setError(json.code ? msg(json.code) : (json.error ?? t('play.generic')));
     if (mode === 'forgot') return setDone(t('auth.forgotSent'));
     if (mode === 'reset') return setDone(t('auth.resetDone'));
-    router.push('/dashboard');
-    router.refresh();
+    // A full load, not router.push: pages prefetched while signed out (the
+    // header links) would otherwise show the visitor version first, and the
+    // root layout must pick up the account's theme, language and sound.
+    // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- a full load on purpose (see above)
+    window.location.assign('/dashboard');
   }
 
   const field = (name: keyof typeof values, label: string, props: React.InputHTMLAttributes<HTMLInputElement>) => (

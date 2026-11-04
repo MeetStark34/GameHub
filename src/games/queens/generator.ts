@@ -1,5 +1,5 @@
 import type { Rng } from '@/lib/rng';
-import { ORTHO, inBounds } from '../shared';
+import { ORTHO, inBounds } from '../core';
 import { countQueensSolutions } from './logic';
 import type { QueensPuzzle, QueensSolution } from './types';
 

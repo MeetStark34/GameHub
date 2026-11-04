@@ -17,7 +17,8 @@ src/
     site.ts                      DEVELOPER (footer credit handle, showcase values)
   games/                         Pure, deterministic engines (no DB, no clock)
     types.ts                     GameEngine contract, ids, difficulties
-    shared.ts                    submit-style act() helper, grid utils
+    core.ts                      msg, Cell, grid utils (zod-free: boards import logic in the browser)
+    shared.ts                    submit-style act() helper, cellSchema (zod; engines only)
     registry.ts                  server-only map id -> engine
     words/dictionary.ts          server-only word lists + ladder graphs
     <game>/types.ts|config.ts|logic.ts|generator.ts|engine.ts|<game>.test.ts
@@ -27,7 +28,8 @@ src/
     contracts.ts                 shared API shapes (SessionView, CompletionResult, RewardEvent)
     db/index.ts                  Db interface, postgres.js + PGlite drivers, migrate(), getDb()
     progression/                 pure rules: ranks, score, xp, streaks, cards, achievements
-    sound.ts                     Web Audio synthesized sounds (client)
+    sound.ts                     synthesized sounds, rendered offline to WAV, played via <audio> (client)
+    play-url.ts                  playTarget(): game/mode/difficulty of a play URL (page + early start)
   server/                        server-only services (all take a Db/tx handle)
     play.ts                      Daily Set creation, sessions, actOnSession -> processCompletion
     progress.ts                  awardXp, streak advance, grantPunch, achievement evaluation, notify
@@ -36,7 +38,9 @@ src/
     users.ts                     passwords, sessions, guests, sign-up/login, resets, rate limit
     auth.ts                      cookie <-> user for the current request, role checks
     account.ts                   settings, export, delete
-    admin.ts                     admin/dev actions + audit log
+    admin.ts                     admin/dev actions
+    audit.ts                     admin audit log insert
+    errors.ts                    PlayError (kept out of play.ts so routes skip the engines)
     admin-dashboard.ts           admin dashboard aggregates
     developer.ts                 developer showcase (configured account only)
     bootstrap.ts                 GAMEHUB_BOOTSTRAP_ADMINS
@@ -47,6 +51,9 @@ src/
     providers.tsx                theme / sound / toast context, achievement popup
     layout/                      reset ticker, header (streak-menu: both streaks), nav, bottom nav, footer
     play/play-client.tsx         session lifecycle, timer, results; loads boards dynamically
+    play/play-intent.tsx         root-layout listener: play link hover = prefetch, click = start session early
+    play/start-session.ts        POST /api/play/start + early-start cache (takeEarlyStart)
+    play/boards.ts               per-game board chunk loaders
     play/boards/*-board.tsx      one UI per game (pointer, touch, keyboard)
     dashboard/, settings/, admin/, game-card.tsx, brand.tsx, ui.tsx
 tests/

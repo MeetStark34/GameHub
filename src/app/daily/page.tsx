@@ -8,7 +8,7 @@ import { getTranslator } from '@/i18n/server';
 import { DailyGameCard, DailyStrip } from '@/components/game-card';
 import { Card, PageHeader, Pill } from '@/components/ui';
 import { currentUser } from '@/server/auth';
-import { dailyDifficultyFor } from '@/server/play';
+import { dailyDifficultyFor } from '@/config/games';
 import { getPlayerSummary } from '@/server/queries';
 
 export async function generateMetadata(): Promise<Metadata> {

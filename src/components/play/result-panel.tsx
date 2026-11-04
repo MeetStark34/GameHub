@@ -118,7 +118,7 @@ export function ResultPanel({ result, onPlayAgain }: { result: CompletionResult;
 
       <div className="flex flex-wrap justify-center gap-2 border-t border-border p-4">
         {result.mode === 'daily' ? (
-          <ButtonLink href="/daily">
+          <ButtonLink href="/daily" prefetch>
             {result.daily?.setComplete ? t('result.viewSet') : t('result.nextDaily')} <ArrowRight className="size-4" aria-hidden />
           </ButtonLink>
         ) : (
@@ -128,7 +128,7 @@ export function ResultPanel({ result, onPlayAgain }: { result: CompletionResult;
             </Button>
           )
         )}
-        <ButtonLink href="/dashboard" variant="secondary">
+        <ButtonLink href="/dashboard" prefetch variant="secondary">
           {t('nav.dashboard')}
         </ButtonLink>
       </div>
