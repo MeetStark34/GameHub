@@ -20,6 +20,13 @@ Local production build, 80 ms of added network latency (before -> after):
   /api/me/summary and sign-in no longer load the game engines and word lists
   on a cold start.
 - Sounds no longer block the main thread (offline-rendered WAV via <audio>).
+- English pages no longer embed the dictionary twice (HTML 18.5 -> 9.0 KB gz).
+- Cold starts: `npm run ops:keep-warm` (D-041) schedules a 5-minute ping from
+  Supabase. Prepared but NOT applied yet: it needs the owner to run it.
+- Live (2026-11-04, real network from Paris edge): header clicks 18-37 ms
+  (were 120-344), opening a Daily game 146-166 ms (was 744), finishing a
+  game 332-354 ms (unchanged; ~37 sequential queries in the completion
+  transaction are the remaining cost).
 - Gates: lint, typecheck, 219 unit/integration, 19 E2E, build: all passing.
 
 ## Hung pages fixed (2026-11-04, D-037)

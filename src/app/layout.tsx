@@ -29,6 +29,8 @@ const body = Inter({ subsets: ['latin'], variable: '--font-body', display: 'swap
 const display = Space_Grotesk({ subsets: ['latin'], variable: '--font-display', display: 'swap', weight: ['500', '600', '700'] });
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-mono', display: 'swap', weight: ['500', '700'] });
 
+const NO_MESSAGES = {};
+
 export async function generateMetadata(): Promise<Metadata> {
   const tr = await getTranslator();
   return {
@@ -103,7 +105,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang={htmlLang} data-theme={theme} className={`${body.variable} ${display.variable} ${mono.variable}`} suppressHydrationWarning>
       <body className="flex min-h-dvh flex-col bg-bg font-sans text-fg antialiased">
-        <I18nProvider locale={locale} messages={MESSAGES[locale]} signedIn={!!user && !user.is_guest}>
+        {/* English is bundled in the client as the fallback: sending it again added ~30 KB to every English page. */}
+        <I18nProvider locale={locale} messages={locale === 'en' ? NO_MESSAGES : MESSAGES[locale]} signedIn={!!user && !user.is_guest}>
           <a href="#main" className="sr-only focus:not-sr-only focus:fixed focus:left-3 focus:top-3 focus:z-[60] focus:rounded-lg focus:bg-card focus:px-3 focus:py-2">
             {tr.t('nav.skip')}
           </a>

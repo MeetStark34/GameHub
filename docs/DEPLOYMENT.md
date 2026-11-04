@@ -21,6 +21,10 @@ have not been run against a live Supabase project.
    `curl -sI https://<your-app>/api/health | grep -i x-vercel-id`.
 5. Optional: pre-warm the Daily Set with a scheduled request to `/daily`
    shortly after 00:00 UTC. It is created lazily on first request anyway.
+6. Optional, recommended on low traffic: `npm run ops:keep-warm` schedules a
+   pg_cron job in Supabase that pings the site every 5 minutes, so visitors
+   rarely meet a cold start (DECISIONS D-041; edit the URLs in
+   `scripts/keep-warm.sql` first if your domain differs).
 
 Production refuses to start without `DATABASE_URL` (PGlite is dev and test
 only unless `ALLOW_PGLITE_IN_PRODUCTION=1`, which the E2E suite uses).

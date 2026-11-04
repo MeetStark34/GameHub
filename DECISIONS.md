@@ -324,3 +324,18 @@ went from ~372 ms to 120-150 ms, an Unlimited one from ~233 ms to ~97 ms
   thread 67 ms (Chrome) to 174 ms (Edge) on Windows, right as a result or
   reward appeared; the new path blocks it for 0 ms (the first sound may start
   up to ~0.3 s later).
+- English pages no longer embed the English dictionary in their RSC payload:
+  the client bundles it as the fallback already (English HTML 78.6 -> 48.7 KB,
+  18.5 -> 9.0 KB gzipped). Other languages still receive theirs.
+
+## D-041 Keep-warm ping from Supabase (2026-11-04, prepared, not applied)
+Measured on the live site: an instance idle for 7 minutes was still warm; after
+10-15 minutes the first request paid a cold start (+0.4-0.7 s, up to 2 s for
+a full first visit). `scripts/keep-warm.sql` schedules a pg_cron job that has
+pg_net GET `/api/health` and four anonymous pages every 5 minutes, from the
+database's region, so one instance of each function group stays warm (about
+43k requests a month, far inside Hobby limits; anonymous pages touch no
+account). It is idempotent and removable (`select
+cron.unschedule('gamehub-keep-warm')`). Apply with `npm run ops:keep-warm`
+(needs DATABASE_URL in .env.local) or paste the file into the Supabase SQL
+editor.
