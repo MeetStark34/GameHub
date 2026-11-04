@@ -15,8 +15,18 @@
   `queensBlockedCells` (src/games/queens/logic.ts).
 - Gates: lint, typecheck, 233 unit/integration (7 opt-in live skipped),
   24 E2E (desktop + mobile), build: all passing.
-- Production status: see the "Production rollout" lines below.
-- Production rollout: PENDING (needs the database credentials, see AI_HANDOFF).
+- Production rollout (2026-11-04): migration 0006 applied before the code
+  deploy; one-off purge removed all 21 existing guests (with 19 private
+  Unlimited puzzles and their sessions, games, XP, stats and achievements)
+  in one verified transaction; `@mstark` (admin) and `@devil-lucifr` and all
+  40 Daily Set puzzles untouched. pg_cron job `gamehub-guest-cleanup`
+  (`*/15 * * * *`) active; first scheduled run 05:45 UTC succeeded
+  (`guest_cleanup_log`). Commit e2a582c deployed to Vercel (dub1); verified
+  live: new guests get exactly 12 h, session ends at the same instant,
+  warning shown, Auto X works.
+- Production connections from a machine without IPv6 use the Supabase
+  session pooler (`aws-0-eu-west-1.pooler.supabase.com:5432`, user
+  `postgres.<project-ref>`); the direct `db.<ref>.supabase.co` host is IPv6-only.
 
 ## Faster navigation and game opening (2026-11-04, D-038 to D-040)
 Local production build, 80 ms of added network latency (before -> after):
