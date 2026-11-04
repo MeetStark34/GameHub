@@ -1,5 +1,13 @@
 # Current state
 
+## Hung pages fixed (2026-11-04, D-037)
+On the live site, signed-in pages with many parallel reads (Dashboard, Daily,
+`/api/me/summary`, reliably right after a Daily game) never finished:
+postgres.js pipelined queries on busy connections and Supavisor's transaction
+mode left backends waiting on `ClientRead`. `max_pipeline: 1` and a default
+pool of 10 fix it; reproduced and verified against the live pooler, and
+`npm run test:live` has a regression test.
+
 ## Performance on Vercel (2026-11-04)
 Live site before the fix (`stark-game-hub.vercel.app`): functions ran in
 `iad1` (Washington) while the database is in `eu-west-1` (Ireland), so every

@@ -59,6 +59,26 @@ async function solve(db: Db, userId: string, sessionId: string, at: Date) {
   return last!;
 }
 
+describe.skipIf(!LIVE || !url)('live database pooling', () => {
+  // D-037: with more concurrent queries than pooled connections, postgres.js
+  // used to pipeline the extra ones; through Supavisor's transaction mode the
+  // first such round hung forever. Read-only, so nothing to roll back.
+  it('more parallel reads than connections all complete', async () => {
+    const { default: postgres } = await import('postgres');
+    const sql = postgres(url!, { ...postgresClientOptions, max: 3, connect_timeout: 20 });
+    try {
+      for (let round = 0; round < 5; round++) {
+        const reads = Array.from({ length: 12 }, (_, i) => sql.unsafe('select $1::int as i', [i]));
+        const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error(`round ${round} hung`)), 15_000));
+        const rows = (await Promise.race([Promise.all(reads), timeout])) as { i: number }[][];
+        expect(rows.map((r) => r[0].i)).toEqual(Array.from({ length: 12 }, (_, i) => i));
+      }
+    } finally {
+      await sql.end({ timeout: 2 });
+    }
+  }, 120_000);
+});
+
 describe.skipIf(!LIVE || !url)('live database (rolled back)', () => {
   it('schema is migrated and every stored json value is a JSON document, not a string', async () => {
     await inRolledBackTx(async (db) => {

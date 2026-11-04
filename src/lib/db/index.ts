@@ -61,9 +61,23 @@ export async function createPgliteDb(dataDir?: string): Promise<Db> {
  */
 export const serializeJsonParam = (x: unknown) => (typeof x === 'string' ? x : JSON.stringify(x));
 
-export const postgresClientOptions: { prepare: false; types: Record<string, { to: number; from: number[]; serialize: (x: unknown) => string; parse: (x: string) => unknown }> } = {
+export const postgresClientOptions: {
+  prepare: false;
+  max_pipeline: 1;
+  types: Record<string, { to: number; from: number[]; serialize: (x: unknown) => string; parse: (x: string) => unknown }>;
+} = {
   // prepare:false keeps us compatible with Supabase's transaction pooler.
   prepare: false,
+  // Never pipeline queries outside a transaction (DECISIONS D-037). Once every
+  // pooled connection is busy, postgres.js otherwise queues further queries on
+  // a busy connection (up to 100). Supavisor's transaction mode can hand the
+  // rest of such a pipeline to another server connection, leaving a backend
+  // waiting for the client forever (state active, wait ClientRead) and the
+  // request hung: on the live site every signed-in page with enough parallel
+  // reads, such as the Dashboard right after a Daily game, never finished.
+  // Queries inside `sql.begin` still pipeline on their own connection, which
+  // the pooler keeps for the whole transaction.
+  max_pipeline: 1,
   types: {
     json: { to: 114, from: [114, 3802], serialize: serializeJsonParam, parse: (x: string) => JSON.parse(x) },
   },
@@ -119,7 +133,9 @@ export async function createPostgresDb(url: string): Promise<Db> {
   const { default: postgres } = await import('postgres');
   // connect_timeout: an unreachable database fails the request after 10 s
   // (logged with host/port below) instead of postgres.js's default 30 s spinner.
-  const sql = postgres(url, { ...postgresClientOptions, max: Number(process.env.DB_POOL_MAX ?? 5), idle_timeout: 20, connect_timeout: 10 });
+  // max: without pipelining, a request's parallel reads (root layout plus page,
+  // about ten on the Dashboard) each need their own connection to run at once.
+  const sql = postgres(url, { ...postgresClientOptions, max: Number(process.env.DB_POOL_MAX ?? 10), idle_timeout: 20, connect_timeout: 10 });
   const wrap = wrapPostgres;
   return {
     ...resilientQueryable(wrap(sql), describeDbUrl(url)),

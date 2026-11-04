@@ -11,7 +11,7 @@ have not been run against a live Supabase project.
    - `NEXT_PUBLIC_SITE_URL`: e.g. `https://gamehub.example.com`
    - `GAMEHUB_BOOTSTRAP_ADMINS`: your email, for the first admin (remove later)
    - `RESEND_API_KEY` and `EMAIL_FROM`: needed for password-reset email
-   - optional `DB_POOL_MAX` (default 5), `DB_AUTO_MIGRATE=1`
+   - optional `DB_POOL_MAX` (default 10), `DB_AUTO_MIGRATE=1`
 4. Deploy, sign up with the bootstrap email, and confirm `/admin` loads.
    **Region:** `vercel.json` runs functions in `dub1` (Dublin), next to a
    Supabase project in `eu-west-1`. If your database is elsewhere, set

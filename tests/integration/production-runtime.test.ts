@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { describeDbUrl, isConnectionError, resilientQueryable, type Queryable } from '@/lib/db';
+import { describeDbUrl, isConnectionError, postgresClientOptions, resilientQueryable, type Queryable } from '@/lib/db';
 import { normalizeOrigin, siteUrl } from '@/server/request';
 
 const connReset = () => Object.assign(new Error('read ECONNRESET'), { code: 'ECONNRESET' });
@@ -46,6 +46,11 @@ describe('database connection handling', () => {
     const q = resilientQueryable({ query } as Queryable, 'test');
     await expect(q.query('update user_stats set total_xp = total_xp + 10')).rejects.toThrow('ECONNRESET');
     expect(query).toHaveBeenCalledTimes(1);
+  });
+
+  it('never pipelines queries outside a transaction (Supavisor transaction mode hangs on it, D-037)', () => {
+    expect(postgresClientOptions.max_pipeline).toBe(1);
+    expect(postgresClientOptions.prepare).toBe(false);
   });
 
   it('does not retry SQL errors', async () => {

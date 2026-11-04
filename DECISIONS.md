@@ -257,3 +257,20 @@ session are one `insert ... with` statement. `actOnSession` locks and reads
 the session in one statement and replays a completed session with a fresh
 read (a request that waited on the lock cannot see the committed completion
 through the first statement's join).
+
+## D-037 postgres.js never pipelines outside a transaction (2026-11-04)
+`postgresClientOptions.max_pipeline = 1`. When every pooled connection was
+busy, postgres.js 4 queued further queries on a busy connection (pipelining,
+up to 100). Through Supavisor's transaction mode (port 6543) part of such a
+pipeline can reach a different server connection, so a backend waits for the
+client forever (`pg_stat_activity`: state `active`, wait `ClientRead`) and the
+request never finishes. On the live site this hung every signed-in page with
+more parallel reads than connections, e.g. the Dashboard, Daily and
+`/api/me/summary` right after a Daily game (D-036 added those parallel reads),
+and a stuck connection kept hanging later requests on the same instance.
+Reproduced against the live pooler (12 parallel `select`s on a pool of 3: hung
+in the first round with the default, 50 rounds clean with `max_pipeline: 1`);
+`npm run test:live` keeps a regression test. Queries inside `sql.begin` still
+pipeline on their own connection: the pooler keeps one server connection for
+the whole transaction (verified the same way). The default pool is now 10
+connections (`DB_POOL_MAX`), so a request's parallel reads still run at once.
